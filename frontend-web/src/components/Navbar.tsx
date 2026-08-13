@@ -13,6 +13,8 @@
 import Link from "next/link";
 import CartIcon from "@/components/cart/CartIcon";
 import useStore from "@/store/useStore";
+// add to the imports at the top
+import SearchBar from "@/components/SearchBar";
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useStore((s) => s);
@@ -25,6 +27,9 @@ export default function Navbar() {
         <Link href="/" className="text-xl font-bold text-slate-900 tracking-tight">
           Shop<span className="text-indigo-600">Wave</span>
         </Link>
+
+        {/* Search */}
+        <SearchBar />
 
         {/* Actions */}
         <div className="flex items-center gap-4">
