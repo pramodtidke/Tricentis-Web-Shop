@@ -18,13 +18,14 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import useStore from "@/store/useStore";
+import { StoredUser } from "@/lib/tokenStorage";
 
 interface UseAuthOptions {
   required?: boolean; // if true, redirect to /login when not authenticated
 }
 
 interface UseAuthReturn {
-  user: ReturnType<typeof useStore>["user"] extends infer U ? U : never;
+  user: StoredUser | null;
   token: string | null;
   isAuthenticated: boolean;
   isHydrated: boolean;
