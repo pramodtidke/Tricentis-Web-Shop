@@ -1,12 +1,5 @@
 /**
- * FILE: src/app/login/page.tsx
- *
- * Next.js App Router login page.
- *
- * - TailwindCSS styling
- * - Client-side form validation (no external library)
- * - On submit: mocks a successful API response and updates Zustand global state
- * - Redirects to "/" after login
+ * FILE: src/app/login/page.tsx (Day 2 - Final fixed version)
  */
 
 "use client";
@@ -16,18 +9,39 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useStore from "@/store/useStore";
 import { validateLogin, LoginFields, ValidationError } from "@/lib/validation";
+import { ApiError } from "@/lib/apiClient";
 
-// ─── Mock API ─────────────────────────────────────────────────────────────────
-// Replace with real fetch() to POST /auth/login when the backend is ready.
-const mockLoginAPI = async (
-  email: string,
-  _password: string
-): Promise<{ user: { id: string; name: string; email: string }; token: string }> => {
-  await new Promise((res) => setTimeout(res, 800)); // simulate network latency
-  return {
-    user: { id: "usr_001", name: email.split("@")[0], email },
-    token: "mock-jwt-token-" + Math.random().toString(36).slice(2),
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface LoginResponse {
+  user: {
+    id: string;
+    name: string;
+    email: string;
   };
+  token: string;
+}
+
+// ─── Direct fetch (bypasses apiClient to rule out wrapper issues) ─────────────
+
+const loginRequest = async (email: string, password: string): Promise<LoginResponse> => {
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+  const res = await fetch(`${BASE_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await res.json();
+
+  console.log("Raw API response:", data);
+
+  if (!res.ok) {
+    throw new ApiError(data.message || "Login failed", res.status, data);
+  }
+
+  return data as LoginResponse;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -44,7 +58,6 @@ export default function LoginPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFields((prev) => ({ ...prev, [name]: value }));
-    // Clear field-level error on change
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -52,6 +65,7 @@ export default function LoginPage() {
     e.preventDefault();
     setServerError("");
 
+    // 1. Client-side validation
     const validationErrors = validateLogin(fields);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -60,11 +74,44 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      const { user, token } = await mockLoginAPI(fields.email, fields.password);
-      login(user, token);
-      router.push("/");
-    } catch {
-      setServerError("Something went wrong. Please try again.");
+      // 2. Call API directly
+      const data = await loginRequest(fields.email.trim(), fields.password);
+
+      console.log("Login response:", data);
+      console.log("Token received:", data.token);
+      console.log("User received:", data.user);
+
+      // 3. Validate response structure
+      if (!data.token || !data.user) {
+        setServerError("Invalid response from server. Please try again.");
+        return;
+      }
+
+      // 4. Save token + update Zustand global state
+      login(data.user, data.token);
+
+      console.log("Login successful! Redirecting...");
+
+      // 5. Redirect
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get("redirect") || "/";
+      router.push(redirectTo);
+
+    } catch (err) {
+      console.error("Login error:", err);
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setServerError("Incorrect email or password. Please try again.");
+        } else if (err.status === 400) {
+          setServerError("Invalid request. Please check your details.");
+        } else if (err.status >= 500) {
+          setServerError("Server error. Please try again in a moment.");
+        } else {
+          setServerError(err.message || "Login failed. Please try again.");
+        }
+      } else {
+        setServerError("Cannot connect to the server. Please check your connection.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +121,7 @@ export default function LoginPage() {
     <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
 
-        {/* Logo / Brand */}
+        {/* Brand */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
             Shop<span className="text-indigo-600">Wave</span>
@@ -86,9 +133,12 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
           <h2 className="text-xl font-semibold text-slate-800 mb-6">Welcome back</h2>
 
-          {/* Server-level error */}
+          {/* Server error banner */}
           {serverError && (
-            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
+              <svg className="w-4 h-4 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+              </svg>
               {serverError}
             </div>
           )}
@@ -166,7 +216,6 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Footer link */}
         <p className="mt-6 text-center text-sm text-slate-500">
           Don&apos;t have an account?{" "}
           <Link href="/register" className="font-semibold text-indigo-600 hover:text-indigo-700">
