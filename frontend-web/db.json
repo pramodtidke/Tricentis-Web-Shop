@@ -1,0 +1,24 @@
+{
+  "users": [
+    {
+      "id": "usr_001",
+      "name": "Pawan Tidke",
+      "email": "pawan@example.com",
+      "password": "password123",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "address": {
+        "street": "123 Main Street",
+        "city": "Pune",
+        "country": "India",
+        "postalCode": "411001"
+      }
+    }
+  ],
+  "auth": [
+    {
+      "id": 1,
+      "email": "pawan@example.com",
+      "token": "mock-jwt-token-abc123xyz"
+    }
+  ]
+}
