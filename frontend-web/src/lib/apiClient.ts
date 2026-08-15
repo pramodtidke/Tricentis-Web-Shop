@@ -1,30 +1,25 @@
 /**
- * FILE: src/lib/apiClient.ts
+ * FILE: src/lib/apiClient.ts  (Day 5 — refactored for the API Gateway)
  *
- * Centralized API client for all backend calls via the API Gateway.
+ * Centralized API client for all backend calls.
  *
- * - Base URL reads from NEXT_PUBLIC_API_URL env variable
- * - Automatically attaches the JWT token from cookies to every request
- * - Throws a typed ApiError on non-2xx responses so callers can handle cleanly
+ * Change from the Day 4 version: the temporary resolveBaseUrl() function
+ * that routed different path prefixes to different service ports has been
+ * removed. The frontend now knows about exactly ONE backend address — the
+ * API Gateway — and the Gateway is responsible for routing to the correct
+ * microservice internally. This matches the "receptionist" pattern from
+ * the System Design Doc (Section 4).
  *
- * Usage:
+ * Usage is unchanged for callers:
  *   import { apiClient } from "@/lib/apiClient";
- *   const data = await apiClient.post("/auth/login", { email, password });
+ *   await apiClient.post("/auth/login", { email, password });
+ *   await apiClient.post("/users/register", { name, email, password });
  */
 
 import Cookies from "js-cookie";
 
-// TEMPORARY: routes requests to the correct service port until a real
-// API Gateway exists. Replace this with a single Gateway URL later.
-function resolveBaseUrl(path: string): string {
-  if (path.startsWith("/auth")) {
-    return process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || "http://localhost:3001";
-  }
-  if (path.startsWith("/users")) {
-    return process.env.NEXT_PUBLIC_USER_SERVICE_URL || "http://localhost:3004";
-  }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-}
+// Single base URL — the Gateway. No more per-path branching.
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 // ─── Typed API Error ──────────────────────────────────────────────────────────
 
@@ -60,6 +55,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
 }
 
 // ─── Build headers ────────────────────────────────────────────────────────────
+// JWT attachment logic is unchanged — still reads from the auth_token
+// cookie and attaches it as a Bearer token on every request.
 
 function buildHeaders(extra?: HeadersInit): HeadersInit {
   const token = Cookies.get("auth_token");
@@ -74,7 +71,7 @@ function buildHeaders(extra?: HeadersInit): HeadersInit {
 
 export const apiClient = {
   async get<T>(path: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
+    const res = await fetch(`${BASE_URL}${path}`, {
       method: "GET",
       headers: buildHeaders(options?.headers),
       ...options,
@@ -83,7 +80,7 @@ export const apiClient = {
   },
 
   async post<T>(path: string, body: unknown, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
+    const res = await fetch(`${BASE_URL}${path}`, {
       method: "POST",
       headers: buildHeaders(options?.headers),
       body: JSON.stringify(body),
@@ -93,7 +90,7 @@ export const apiClient = {
   },
 
   async put<T>(path: string, body: unknown, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
+    const res = await fetch(`${BASE_URL}${path}`, {
       method: "PUT",
       headers: buildHeaders(options?.headers),
       body: JSON.stringify(body),
@@ -103,7 +100,7 @@ export const apiClient = {
   },
 
   async delete<T>(path: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
+    const res = await fetch(`${BASE_URL}${path}`, {
       method: "DELETE",
       headers: buildHeaders(options?.headers),
       ...options,
