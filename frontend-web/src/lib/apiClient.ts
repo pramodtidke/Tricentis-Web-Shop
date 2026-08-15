@@ -14,8 +14,17 @@
 
 import Cookies from "js-cookie";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+// TEMPORARY: routes requests to the correct service port until a real
+// API Gateway exists. Replace this with a single Gateway URL later.
+function resolveBaseUrl(path: string): string {
+  if (path.startsWith("/auth")) {
+    return process.env.NEXT_PUBLIC_AUTH_SERVICE_URL || "http://localhost:3001";
+  }
+  if (path.startsWith("/users")) {
+    return process.env.NEXT_PUBLIC_USER_SERVICE_URL || "http://localhost:3004";
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+}
 
 // ─── Typed API Error ──────────────────────────────────────────────────────────
 
@@ -65,7 +74,7 @@ function buildHeaders(extra?: HeadersInit): HeadersInit {
 
 export const apiClient = {
   async get<T>(path: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
       method: "GET",
       headers: buildHeaders(options?.headers),
       ...options,
@@ -74,7 +83,7 @@ export const apiClient = {
   },
 
   async post<T>(path: string, body: unknown, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
       method: "POST",
       headers: buildHeaders(options?.headers),
       body: JSON.stringify(body),
@@ -84,7 +93,7 @@ export const apiClient = {
   },
 
   async put<T>(path: string, body: unknown, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
       method: "PUT",
       headers: buildHeaders(options?.headers),
       body: JSON.stringify(body),
@@ -94,7 +103,7 @@ export const apiClient = {
   },
 
   async delete<T>(path: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(`${resolveBaseUrl(path)}${path}`, {
       method: "DELETE",
       headers: buildHeaders(options?.headers),
       ...options,

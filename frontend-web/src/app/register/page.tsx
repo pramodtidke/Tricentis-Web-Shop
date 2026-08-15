@@ -1,12 +1,22 @@
 /**
- * FILE: src/app/register/page.tsx
+ * FILE: src/app/register/page.tsx  (Day 4 — real API integration)
  *
- * Next.js App Router registration page.
+ * Changes from the mock version:
+ *  - Removed mockRegisterAPI()
+ *  - Now calls real POST /users/register through the API Gateway
+ *  - Gateway routes /users/* to the User Service on port 3004
+ *  - After successful registration, automatically logs in via
+ *    POST /auth/login so the user doesn't have to sign in twice
  *
- * - TailwindCSS styling
- * - Client-side form validation (no external library)
- * - On submit: mocks a successful API response, then updates Zustand global state
- * - Redirects to "/" after registration
+ * Backend contract (User Service via API Gateway):
+ *   POST /users/register
+ *   Body:    { name: string, email: string, password: string }
+ *   Returns: { message: string, user: { id, name, email } }
+ *   Errors:  { message: string } with status 400 / 409
+ *
+ * Note: registration does NOT return a token (per the System Design Doc,
+ * only the Auth Service issues JWTs). So after registering, we chain a
+ * call to POST /auth/login to get the token and log the user in.
  */
 
 "use client";
@@ -15,33 +25,39 @@ import { useState, FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useStore from "@/store/useStore";
-import { validateRegister, RegisterFields, ValidationError } from "@/lib/validation";
+import {
+  validateRegister,
+  RegisterFields,
+  ValidationError,
+} from "@/lib/validation";
+import { apiClient, ApiError } from "@/lib/apiClient";
+import { StoredUser } from "@/lib/tokenStorage";
 
-// ─── Mock API ─────────────────────────────────────────────────────────────────
-// Replace with real fetch() to POST /users/register when the backend is ready.
-const mockRegisterAPI = async (
-  fields: RegisterFields
-): Promise<{ user: { id: string; name: string; email: string }; token: string }> => {
-  await new Promise((res) => setTimeout(res, 900));
-  return {
-    user: {
-      id: "usr_" + Math.random().toString(36).slice(2, 8),
-      name: fields.name.trim(),
-      email: fields.email.trim(),
-    },
-    token: "mock-jwt-token-" + Math.random().toString(36).slice(2),
-  };
-};
+// ─── API response types ───────────────────────────────────────────────────────
+
+interface RegisterResponse {
+  message: string;
+  user: StoredUser;
+}
+
+interface LoginResponse {
+  user: StoredUser;
+  token: string;
+}
 
 // ─── Password strength indicator ─────────────────────────────────────────────
 
 function PasswordStrength({ password }: { password: string }) {
   const strength =
-    password.length === 0 ? 0
-    : password.length < 6 ? 1
-    : password.length < 8 ? 2
-    : /[A-Z]/.test(password) && /[0-9]/.test(password) ? 4
-    : 3;
+    password.length === 0
+      ? 0
+      : password.length < 6
+      ? 1
+      : password.length < 8
+      ? 2
+      : /[A-Z]/.test(password) && /[0-9]/.test(password)
+      ? 4
+      : 3;
 
   const labels = ["", "Too short", "Weak", "Good", "Strong"];
   const colors = ["", "bg-red-400", "bg-orange-400", "bg-yellow-400", "bg-emerald-500"];
@@ -54,11 +70,23 @@ function PasswordStrength({ password }: { password: string }) {
         {[1, 2, 3, 4].map((n) => (
           <div
             key={n}
-            className={`h-1 flex-1 rounded-full transition-all ${n <= strength ? colors[strength] : "bg-slate-200"}`}
+            className={`h-1 flex-1 rounded-full transition-all ${
+              n <= strength ? colors[strength] : "bg-slate-200"
+            }`}
           />
         ))}
       </div>
-      <p className={`text-xs ${strength <= 1 ? "text-red-500" : strength === 2 ? "text-orange-500" : strength === 3 ? "text-yellow-600" : "text-emerald-600"}`}>
+      <p
+        className={`text-xs ${
+          strength <= 1
+            ? "text-red-500"
+            : strength === 2
+            ? "text-orange-500"
+            : strength === 3
+            ? "text-yellow-600"
+            : "text-emerald-600"
+        }`}
+      >
         {labels[strength]}
       </p>
     </div>
@@ -99,11 +127,41 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     try {
-      const { user, token } = await mockRegisterAPI(fields);
-      login(user, token); // log the user in immediately after registration
+      // 1. Register the account — routed by the Gateway to the User Service
+      await apiClient.post<RegisterResponse>("/users/register", {
+        name: fields.name.trim(),
+        email: fields.email.trim(),
+        password: fields.password,
+      });
+
+      // 2. Immediately log in to get a JWT — routed to the Auth Service
+      const { user, token } = await apiClient.post<LoginResponse>(
+        "/auth/login",
+        {
+          email: fields.email.trim(),
+          password: fields.password,
+        }
+      );
+
+      // 3. Store token + update global state
+      login(user, token);
+
+      // 4. Redirect
       router.push("/");
-    } catch {
-      setServerError("Registration failed. Please try again.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          setServerError("An account with this email already exists.");
+        } else if (err.status === 400) {
+          setServerError(err.message || "Please check your details and try again.");
+        } else if (err.status >= 500) {
+          setServerError("Server error. Please try again in a moment.");
+        } else {
+          setServerError(err.message || "Registration failed. Please try again.");
+        }
+      } else {
+        setServerError("Cannot connect to the server. Please check your connection.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +175,6 @@ export default function RegisterPage() {
   return (
     <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-
         {/* Brand */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
@@ -131,13 +188,19 @@ export default function RegisterPage() {
           <h2 className="text-xl font-semibold text-slate-800 mb-6">Get started</h2>
 
           {serverError && (
-            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
+              <svg className="w-4 h-4 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                  clipRule="evenodd"
+                />
+              </svg>
               {serverError}
             </div>
           )}
 
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
-
             {/* Full name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1">
@@ -213,15 +276,18 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Terms notice */}
             <p className="text-xs text-slate-500">
               By registering you agree to our{" "}
-              <Link href="/terms" className="underline hover:text-slate-700">Terms of Service</Link>{" "}
+              <Link href="/terms" className="underline hover:text-slate-700">
+                Terms of Service
+              </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="underline hover:text-slate-700">Privacy Policy</Link>.
+              <Link href="/privacy" className="underline hover:text-slate-700">
+                Privacy Policy
+              </Link>
+              .
             </p>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={isLoading}
