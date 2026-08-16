@@ -4,7 +4,7 @@ import { seedDatabase } from "./utils/seed";
 import productsRouter from "./routes/products";
 
 const app = express();
-const PORT = process.env.PORT || 4001;
+const PORT = process.env.PORT || 3002;
 
 app.use(express.json());
 app.use("/products", productsRouter);
