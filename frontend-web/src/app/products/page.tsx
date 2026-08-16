@@ -4,15 +4,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { mockProducts, Product } from "@/lib/mockData";
-import useStore from "@/store/useStore";
+import useCartStore from "@/store/cartStore";
 
 function ProductCard({ product }: { product: Product }) {
-  const { addItem, openCart } = useStore((s) => s);
+  const addToCart = useCartStore((s) => s.addToCart);
+  const openCart = useCartStore((s) => s.openCart);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem({
+    addToCart({
       id: product.id,
       name: product.name,
       price: product.price,

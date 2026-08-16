@@ -1,13 +1,14 @@
 "use client";
 
-import useStore from "@/store/useStore";
+import useCartStore from "@/store/cartStore";
 import { Product } from "@/lib/mockData";
 
 export default function AddToCartButton({ product }: { product: Product }) {
-  const { addItem, openCart } = useStore((s) => s);
+  const addToCart = useCartStore((s) => s.addToCart);
+  const openCart = useCartStore((s) => s.openCart);
 
   const handleAddToCart = () => {
-    addItem({
+    addToCart({
       id: product.id,
       name: product.name,
       price: product.price,

@@ -99,6 +99,16 @@ export const apiClient = {
     return handleResponse<T>(res);
   },
 
+  async patch<T>(path: string, body: unknown, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "PATCH",
+    headers: buildHeaders(options?.headers),
+    body: JSON.stringify(body),
+    ...options,
+  });
+  return handleResponse<T>(res);
+},
+
   async delete<T>(path: string, options?: RequestInit): Promise<T> {
     const res = await fetch(`${BASE_URL}${path}`, {
       method: "DELETE",

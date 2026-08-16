@@ -1,23 +1,19 @@
-/**
- * FILE: src/components/Navbar.tsx
- *
- * Responsive top navigation bar.
- *
- * - Shows user name + logout button when authenticated (reads Zustand)
- * - Shows Login / Register links when logged out
- * - CartIcon with live badge
- */
-
 "use client";
 
 import Link from "next/link";
 import CartIcon from "@/components/cart/CartIcon";
 import useStore from "@/store/useStore";
-// add to the imports at the top
+import useCartStore from "@/store/cartStore";
 import SearchBar from "@/components/SearchBar";
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useStore((s) => s);
+  const clearCart = useCartStore((s) => s.clearCart);
+
+  const handleLogout = () => {
+    logout();
+    clearCart();
+  };
 
   return (
     <header className="fixed top-0 inset-x-0 z-30 bg-white border-b border-slate-100 h-16">
@@ -40,7 +36,7 @@ export default function Navbar() {
                 Hi, <span className="font-medium text-slate-700">{user.name}</span>
               </span>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="text-sm text-slate-500 hover:text-slate-800 transition"
               >
                 Sign out

@@ -6,6 +6,7 @@
  * - Live quantity controls (+/-) update the total instantly
  * - Remove button per item
  * - Empty state
+ * - Error banner when a backend cart action fails (Day 6 addition)
  * - "Proceed to Checkout" -> /checkout
  * - Closes on Escape, backdrop click, or the × button
  *
@@ -30,6 +31,7 @@ export default function CartDrawer() {
     closeCart,
     updateQuantity,
     removeFromCart,
+    error,
   } = useCartStore((s) => s);
 
   const total = selectCartTotal(items);
@@ -91,6 +93,13 @@ export default function CartDrawer() {
             </svg>
           </button>
         </div>
+
+        {/* Error banner */}
+        {error && (
+          <div className="mx-5 mt-3 flex items-start justify-between gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <span>{error}</span>
+          </div>
+        )}
 
         {/* Item list */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
