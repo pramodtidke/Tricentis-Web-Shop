@@ -58,8 +58,8 @@ const User = sequelize.define(
  * strips out password_hash so it never accidentally leaks to the client.
  */
 User.prototype.toSafeJSON = function () {
-  const { id, name, email, created_at } = this;
-  return { id, name, email, createdAt: created_at };
+  const { id, name, email, createdAt } = this;
+  return { id, name, email, createdAt };
 };
 
 module.exports = User;
