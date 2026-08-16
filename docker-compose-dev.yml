@@ -1,0 +1,115 @@
+version: "3.9"
+
+services:
+  # ─── Databases ──────────────────────────────────────────────────────────
+
+  redis:
+    image: redis:7-alpine
+    container_name: shopwave-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: shopwave-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shopwave_users
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # ─── Microservices ──────────────────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: ./auth-service
+    container_name: shopwave-auth-service
+    environment:
+      PORT: 3001
+      REDIS_URL: redis://redis:6379
+      USER_SERVICE_URL: http://user-service:3004
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+
+  user-service:
+    build:
+      context: ./user-service
+    container_name: shopwave-user-service
+    environment:
+      PORT: 3004
+      DB_NAME: shopwave_users
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      BCRYPT_SALT_ROUNDS: 10
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3004:3004"
+
+  cart-service:
+    build:
+      context: ./cart-service
+    container_name: shopwave-cart-service
+    environment:
+      PORT: 3005
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "3005:3005"
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: shopwave-api-gateway
+    environment:
+      PORT: 4000
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_SERVICE_URL: http://user-service:3004
+      CATALOG_SERVICE_URL: http://catalog-service:3002
+      CART_SERVICE_URL: http://cart-service:3005
+      FRONTEND_URL: http://localhost:3000
+    depends_on:
+      - auth-service
+      - user-service
+      - cart-service
+    ports:
+      - "4000:4000"
+
+  # ─── Frontend ───────────────────────────────────────────────────────────
+
+  frontend-web:
+    build:
+      context: ./frontend-web
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000
+    container_name: shopwave-frontend-web
+    depends_on:
+      - api-gateway
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
