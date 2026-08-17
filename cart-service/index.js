@@ -115,6 +115,18 @@ app.patch('/cart/:userId/update', async (req, res) => {
   }
 });
 
+// DELETE /cart/:userId — clear the entire cart (used by Order Service after checkout)
+app.delete('/cart/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    await saveCart(userId, []);
+    res.status(200).json({ userId, items: [] });
+  } catch (err) {
+    console.error('DELETE /cart error:', err);
+    res.status(500).json({ error: 'Failed to clear cart' });
+  }
+});
+
 async function startServer() {
   await redisClient.connect();
   console.log('Connected to Redis');
