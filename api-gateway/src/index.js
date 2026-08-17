@@ -29,6 +29,7 @@ const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://localhost:3004"
 const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || "http://localhost:3002";
 const CART_SERVICE_URL = process.env.CART_SERVICE_URL || "http://localhost:3005";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://localhost:3006";
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
@@ -122,6 +123,19 @@ app.use(
     },
   })
 );
+
+app.use(
+  createProxyMiddleware({
+    pathFilter: "/orders",
+    target: ORDER_SERVICE_URL,
+    changeOrigin: true,
+    on: {
+      error: onProxyError("Order Service"),
+    },
+  })
+);
+
+
 // ─── 404 for anything not matching a known service prefix ────────────────────
 
 app.use((req, res) => {
@@ -138,4 +152,5 @@ app.listen(PORT, () => {
   console.log(`   /users/*     -> ${USER_SERVICE_URL}`);
   console.log(`   /products/*  -> ${CATALOG_SERVICE_URL}`);
   console.log(`   /cart/*      -> ${CART_SERVICE_URL}`);
+  console.log(`   /orders/*    -> ${ORDER_SERVICE_URL}`);
 });
