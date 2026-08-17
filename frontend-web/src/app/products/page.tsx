@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -64,11 +64,18 @@ function ProductsContent() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("search")?.toLowerCase() ?? "";
 
+  const [selectedCategory, setSelectedCategory] = useState("All");
+
   const categories = Array.from(new Set(mockProducts.map((p) => p.category)));
 
-  const filteredProducts = searchQuery
-    ? mockProducts.filter((p) => p.name.toLowerCase().includes(searchQuery))
-    : mockProducts;
+  const filteredProducts = mockProducts.filter((product) => {
+    const matchesSearch = searchQuery
+      ? product.name.toLowerCase().includes(searchQuery)
+      : true;
+    const matchesCategory =
+      selectedCategory === "All" || product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -83,13 +90,27 @@ function ProductsContent() {
           </h2>
           <ul className="space-y-2">
             <li>
-              <button className="text-sm font-medium text-blue-600">
+              <button
+                onClick={() => setSelectedCategory("All")}
+                className={`text-sm ${
+                  selectedCategory === "All"
+                    ? "font-medium text-blue-600"
+                    : "text-gray-600 hover:text-blue-600"
+                }`}
+              >
                 All
               </button>
             </li>
             {categories.map((category) => (
               <li key={category}>
-                <button className="text-sm text-gray-600 hover:text-blue-600">
+                <button
+                  onClick={() => setSelectedCategory(category)}
+                  className={`text-sm ${
+                    selectedCategory === category
+                      ? "font-medium text-blue-600"
+                      : "text-gray-600 hover:text-blue-600"
+                  }`}
+                >
                   {category}
                 </button>
               </li>
@@ -104,7 +125,9 @@ function ProductsContent() {
             ))
           ) : (
             <p className="col-span-full text-sm text-gray-500">
-              No products found for &quot;{searchQuery}&quot;.
+              No products found
+              {searchQuery && ` for "${searchQuery}"`}
+              {selectedCategory !== "All" && ` in "${selectedCategory}"`}.
             </p>
           )}
         </div>
