@@ -1,18 +1,38 @@
-import Image from "next/image";
-import { notFound } from "next/navigation";
-import { mockProducts } from "@/lib/mockData";
-import AddToCartButton from "./AddToCartButton";
+"use client";
 
-export default async function ProductDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const product = mockProducts.find((p) => p.id === id);
+import Image from "next/image";
+import { useParams } from "next/navigation";
+import { mockProducts } from "@/lib/mockData";
+import useCartStore from "@/store/cartStore";
+
+export default function ProductDetailPage() {
+  const params = useParams<{ id: string }>();
+  const product = mockProducts.find((p) => p.id === params.id);
+
+  const { addToCart, openCart } = useCartStore((s) => s);
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      imageUrl: product.image,
+    });
+    openCart();
+  };
 
   if (!product) {
-    notFound();
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-16 text-center sm:px-6 lg:px-8">
+        <h1 className="text-2xl font-bold text-gray-900">
+          Product Not Found
+        </h1>
+        <p className="mt-2 text-sm text-gray-500">
+          We couldn&apos;t find a product with that ID.
+        </p>
+      </main>
+    );
   }
 
   return (
@@ -44,7 +64,12 @@ export default async function ProductDetailPage({
           </p>
 
           <div className="mt-8">
-            <AddToCartButton product={product} />
+            <button
+              onClick={handleAddToCart}
+              className="w-full rounded-md bg-gray-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-700 md:w-auto"
+            >
+              Add to Cart
+            </button>
           </div>
         </div>
       </div>
