@@ -1,15 +1,45 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { mockProducts } from "@/lib/mockData";
+import { apiClient } from "@/lib/apiClient";
 import useCartStore from "@/store/cartStore";
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  category: string;
+  imageUrl: string;
+}
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
-  const product = mockProducts.find((p) => p.id === params.id);
+  const addToCart = useCartStore((s) => s.addToCart);
+  const openCart = useCartStore((s) => s.openCart);
 
-  const { addToCart, openCart } = useCartStore((s) => s);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchProduct() {
+      try {
+        setLoading(true);
+        const data = await apiClient.get<Product>(`/products/${params.id}`);
+        setProduct(data);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch product:", err);
+        setError("Product not found.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (params.id) fetchProduct();
+  }, [params.id]);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -17,12 +47,20 @@ export default function ProductDetailPage() {
       id: product.id,
       name: product.name,
       price: product.price,
-      imageUrl: product.image,
+      imageUrl: product.imageUrl,
     });
     openCart();
   };
 
-  if (!product) {
+  if (loading) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-16 text-center sm:px-6 lg:px-8">
+        <p className="text-sm text-gray-500">Loading product...</p>
+      </main>
+    );
+  }
+
+  if (error || !product) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-16 text-center sm:px-6 lg:px-8">
         <h1 className="text-2xl font-bold text-gray-900">
@@ -40,7 +78,7 @@ export default function ProductDetailPage() {
       <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
         <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
           <Image
-            src={product.image}
+            src={product.imageUrl}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"

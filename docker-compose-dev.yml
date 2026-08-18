@@ -30,6 +30,20 @@ services:
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    
+  mongo:
+    image: mongo:7
+    container_name: shopwave-mongo
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - mongo_data:/data/db
+
 
   # ─── Microservices ──────────────────────────────────────────────────────
 
@@ -100,7 +114,7 @@ services:
     ports:
       - "3006:3006"
 
-  payment-service:
+    payment-service:
     build:
       context: ./payment-service
     container_name: shopwave-payment-service
@@ -120,6 +134,20 @@ services:
     ports:
       - "3008:3008"
 
+  review-service:
+    build:
+      context: ./review-service
+    container_name: shopwave-review-service
+    environment:
+      PORT: 3009
+      MONGO_URI: mongodb://mongo:27017/shopwave_reviews
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "3009:3009"
+
+
   api-gateway:
     build:
       context: ./api-gateway
@@ -133,15 +161,16 @@ services:
       ORDER_SERVICE_URL: http://order-service:3006
       FRONTEND_URL: http://localhost:3000
       PAYMENT_SERVICE_URL: http://payment-service:3008
+      REVIEW_SERVICE_URL: http://review-service:3009
     depends_on:
       - auth-service
       - user-service
       - cart-service
       - order-service
       - payment-service
+      - review-service
     ports:
       - "4000:4000"
-
   # ─── Frontend ───────────────────────────────────────────────────────────
 
   frontend-web:
@@ -157,3 +186,6 @@ services:
 
 volumes:
   postgres_data:
+  mongo_data:
+
+  
