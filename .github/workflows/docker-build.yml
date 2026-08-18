@@ -19,6 +19,8 @@ jobs:
           - auth-service
           - user-service
           - cart-service
+          - order-service
+          - payment-service
 
     steps:
       - name: Checkout code

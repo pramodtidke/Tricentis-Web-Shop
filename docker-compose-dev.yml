@@ -80,6 +80,46 @@ services:
     ports:
       - "3005:3005"
 
+  order-service:
+    build:
+      context: ./order-service
+    container_name: shopwave-order-service
+    environment:
+      PORT: 3006
+      DB_NAME: shopwave_users
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      CART_SERVICE_URL: http://cart-service:3005
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cart-service:
+        condition: service_started
+    ports:
+      - "3006:3006"
+
+  payment-service:
+    build:
+      context: ./payment-service
+    container_name: shopwave-payment-service
+    environment:
+      PORT: 3008
+      DB_NAME: shopwave_users
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      ORDER_SERVICE_URL: http://order-service:3006
+    depends_on:
+      postgres:
+        condition: service_healthy
+      order-service:
+        condition: service_started
+    ports:
+      - "3008:3008"
+
   api-gateway:
     build:
       context: ./api-gateway
@@ -90,11 +130,15 @@ services:
       USER_SERVICE_URL: http://user-service:3004
       CATALOG_SERVICE_URL: http://catalog-service:3002
       CART_SERVICE_URL: http://cart-service:3005
+      ORDER_SERVICE_URL: http://order-service:3006
       FRONTEND_URL: http://localhost:3000
+      PAYMENT_SERVICE_URL: http://payment-service:3008
     depends_on:
       - auth-service
       - user-service
       - cart-service
+      - order-service
+      - payment-service
     ports:
       - "4000:4000"
 

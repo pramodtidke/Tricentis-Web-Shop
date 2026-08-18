@@ -87,4 +87,34 @@ router.post("/checkout", async (req, res) => {
   }
 });
 
+router.put('/:orderId/status', async (req, res) => {
+  const { orderId } = req.params;
+  const { status } = req.body;
+
+  const validStatuses = ['pending', 'paid', 'shipped'];
+  if (!status || !validStatuses.includes(status)) {
+    return res.status(400).json({
+      message: `status must be one of: ${validStatuses.join(', ')}`,
+    });
+  }
+
+  try {
+    const order = await Order.findByPk(orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    order.status = status;
+    await order.save();
+
+    return res.status(200).json({
+      orderId: order.id,
+      status: order.status,
+    });
+  } catch (err) {
+    console.error(`Failed to update status for order ${orderId}:`, err.message);
+    return res.status(500).json({ message: 'Failed to update order status' });
+  }
+});
+
 module.exports = router;
