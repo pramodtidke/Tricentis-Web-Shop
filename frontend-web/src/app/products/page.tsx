@@ -1,11 +1,20 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { mockProducts, Product } from "@/lib/mockData";
+import { apiClient } from "@/lib/apiClient";
 import useCartStore from "@/store/cartStore";
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  category: string;
+  imageUrl: string;
+}
 
 function ProductCard({ product }: { product: Product }) {
   const addToCart = useCartStore((s) => s.addToCart);
@@ -18,7 +27,7 @@ function ProductCard({ product }: { product: Product }) {
       id: product.id,
       name: product.name,
       price: product.price,
-      imageUrl: product.image,
+      imageUrl: product.imageUrl,
     });
     openCart();
   };
@@ -30,7 +39,7 @@ function ProductCard({ product }: { product: Product }) {
     >
       <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
         <Image
-          src={product.image}
+          src={product.imageUrl}
           alt={product.name}
           fill
           sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
@@ -64,11 +73,31 @@ function ProductsContent() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("search")?.toLowerCase() ?? "";
 
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = Array.from(new Set(mockProducts.map((p) => p.category)));
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        setLoading(true);
+        const data = await apiClient.get<Product[]>("/products");
+        setProducts(data);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch products:", err);
+        setError("Failed to load products. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProducts();
+  }, []);
 
-  const filteredProducts = mockProducts.filter((product) => {
+  const categories = Array.from(new Set(products.map((p) => p.category)));
+
+  const filteredProducts = products.filter((product) => {
     const matchesSearch = searchQuery
       ? product.name.toLowerCase().includes(searchQuery)
       : true;
@@ -83,55 +112,63 @@ function ProductsContent() {
         Shop All Products
       </h1>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[220px_1fr]">
-        <aside className="h-fit rounded-lg border border-gray-200 bg-white p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">
-            Category
-          </h2>
-          <ul className="space-y-2">
-            <li>
-              <button
-                onClick={() => setSelectedCategory("All")}
-                className={`text-sm ${
-                  selectedCategory === "All"
-                    ? "font-medium text-blue-600"
-                    : "text-gray-600 hover:text-blue-600"
-                }`}
-              >
-                All
-              </button>
-            </li>
-            {categories.map((category) => (
-              <li key={category}>
+      {loading && <p className="text-sm text-gray-500">Loading products...</p>}
+
+      {error && (
+        <p className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-600">
+          {error}
+        </p>
+      )}
+
+      {!loading && !error && (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[220px_1fr]">
+          <aside className="h-fit rounded-lg border border-gray-200 bg-white p-4">
+            <h2 className="mb-3 text-sm font-semibold text-gray-900">
+              Category
+            </h2>
+            <ul className="space-y-2">
+              <li>
                 <button
-                  onClick={() => setSelectedCategory(category)}
+                  onClick={() => setSelectedCategory("All")}
                   className={`text-sm ${
-                    selectedCategory === category
+                    selectedCategory === "All"
                       ? "font-medium text-blue-600"
                       : "text-gray-600 hover:text-blue-600"
                   }`}
                 >
-                  {category}
+                  All
                 </button>
               </li>
-            ))}
-          </ul>
-        </aside>
+              {categories.map((category) => (
+                <li key={category}>
+                  <button
+                    onClick={() => setSelectedCategory(category)}
+                    className={`text-sm ${
+                      selectedCategory === category
+                        ? "font-medium text-blue-600"
+                        : "text-gray-600 hover:text-blue-600"
+                    }`}
+                  >
+                    {category}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </aside>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:gap-6 xl:grid-cols-4">
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))
-          ) : (
-            <p className="col-span-full text-sm text-gray-500">
-              No products found
-              {searchQuery && ` for "${searchQuery}"`}
-              {selectedCategory !== "All" && ` in "${selectedCategory}"`}.
-            </p>
-          )}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:gap-6 xl:grid-cols-4">
+            {filteredProducts.length > 0 ? (
+              filteredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))
+            ) : (
+              <p className="col-span-full text-sm text-gray-500">
+                No products found.
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }

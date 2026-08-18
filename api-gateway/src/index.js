@@ -147,6 +147,20 @@ app.use(
   })
 );
 
+// ───────────────────────────────────────────────────────────────────────────── 
+
+const REVIEW_SERVICE_URL = process.env.REVIEW_SERVICE_URL || "http://localhost:3009";
+
+app.use(
+  createProxyMiddleware({
+    pathFilter: "/reviews",
+    target: REVIEW_SERVICE_URL,
+    changeOrigin: true,
+    on: {
+      error: onProxyError("Review Service"),
+    },
+  })
+);
 
 // ─── 404 for anything not matching a known service prefix ────────────────────
 
@@ -166,4 +180,5 @@ app.listen(PORT, () => {
   console.log(`   /cart/*      -> ${CART_SERVICE_URL}`);
   console.log(`   /orders/*    -> ${ORDER_SERVICE_URL}`);
   console.log(`   /payments/*    -> ${PAYMENT_SERVICE_URL}`);
+  console.log(`   /reviews/*   -> ${REVIEW_SERVICE_URL}`);
 });

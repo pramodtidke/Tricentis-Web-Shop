@@ -176,6 +176,19 @@ services:
     ports:
       - "3010:3010"
 
+  review-service:
+    build:
+      context: ./review-service
+    container_name: shopwave-review-service
+    environment:
+      PORT: 3009
+      MONGO_URI: mongodb://mongodb:27017/shopwave_reviews
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "3009:3009"
+
   api-gateway:
     build:
       context: ./api-gateway
@@ -189,12 +202,14 @@ services:
       ORDER_SERVICE_URL: http://order-service:3006
       FRONTEND_URL: http://localhost:3000
       PAYMENT_SERVICE_URL: http://payment-service:3008
+      REVIEW_SERVICE_URL: http://review-service:3009
     depends_on:
       - auth-service
       - user-service
       - cart-service
       - order-service
       - payment-service
+      - review-service
     ports:
       - "4000:4000"
 
