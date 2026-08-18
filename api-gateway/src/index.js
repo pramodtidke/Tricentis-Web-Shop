@@ -30,6 +30,7 @@ const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || "http://localhost
 const CART_SERVICE_URL = process.env.CART_SERVICE_URL || "http://localhost:3005";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://localhost:3006";
+const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'http://localhost:3008';
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
@@ -135,6 +136,17 @@ app.use(
   })
 );
 
+app.use(
+  createProxyMiddleware({
+    pathFilter: "/payments",
+    target: PAYMENT_SERVICE_URL,
+    changeOrigin: true,
+    on: {
+      error: onProxyError("Payment Service"),
+    },
+  })
+);
+
 
 // ─── 404 for anything not matching a known service prefix ────────────────────
 
@@ -153,4 +165,5 @@ app.listen(PORT, () => {
   console.log(`   /products/*  -> ${CATALOG_SERVICE_URL}`);
   console.log(`   /cart/*      -> ${CART_SERVICE_URL}`);
   console.log(`   /orders/*    -> ${ORDER_SERVICE_URL}`);
+  console.log(`   /payments/*    -> ${PAYMENT_SERVICE_URL}`);
 });
