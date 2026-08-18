@@ -31,6 +31,36 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: shopwave-rabbitmq
+    ports:
+      - "5672:5672"    # AMQP protocol port
+      - "15672:15672"  # Management UI (http://localhost:15672, guest/guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:7
+    container_name: shopwave-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ─── Microservices ──────────────────────────────────────────────────────
 
   auth-service:
@@ -92,11 +122,17 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       CART_SERVICE_URL: http://cart-service:3005
+      USER_SERVICE_URL: http://user-service:3004
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
       cart-service:
         condition: service_started
+      user-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "3006:3006"
 
@@ -112,13 +148,33 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       ORDER_SERVICE_URL: http://order-service:3006
+      USER_SERVICE_URL: http://user-service:3004
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
       order-service:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "3008:3008"
+
+  notification-service:
+    build:
+      context: ./notification-service
+    container_name: shopwave-notification-service
+    environment:
+      PORT: 3010
+      MONGO_URI: mongodb://mongodb:27017/shopwave_notifications
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "3010:3010"
 
   api-gateway:
     build:
@@ -157,3 +213,5 @@ services:
 
 volumes:
   postgres_data:
+  rabbitmq-data:
+  mongodb-data:
