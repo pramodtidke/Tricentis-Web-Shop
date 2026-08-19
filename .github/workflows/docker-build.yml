@@ -21,6 +21,9 @@ jobs:
           - cart-service
           - order-service
           - payment-service
+          - notification-service
+          - catalog-service
+          - review-service
 
     steps:
       - name: Checkout code

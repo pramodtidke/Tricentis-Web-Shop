@@ -23,6 +23,7 @@ import StepIndicator from "@/components/checkout/StepIndicator";
 import ShippingStep, { ShippingAddress } from "@/components/checkout/ShippingStep";
 import PaymentStep, { PaymentMethod } from "@/components/checkout/PaymentStep";
 import ReviewStep from "@/components/checkout/ReviewStep";
+import useStore from "@/store/useStore";
 
 const emptyAddress: ShippingAddress = {
   fullName: "",
@@ -53,17 +54,81 @@ export default function CheckoutPage() {
 
   // Simulates placing an order — replace with a real POST /orders/checkout
   // call once the Order Service exists.
+  const user = useStore((s) => s.user);
+  const [orderError, setOrderError] = useState("");
+
+  // Calls the real Order Service, then the real Payment Service, through the gateway.
   const handlePlaceOrder = async () => {
+    setOrderError("");
+
+    if (!user) {
+      setOrderError("You must be signed in to place an order.");
+      return;
+    }
+
     setIsPlacingOrder(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200)); // simulate network delay
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-    const generatedOrderNumber =
-      "ORD-" + Math.random().toString(36).slice(2, 10).toUpperCase();
+    try {
+      // Step 1: create the order
+      const checkoutRes = await fetch(`${BASE_URL}/orders/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          shippingAddress: {
+            street: address.street,
+            city: address.city,
+            postalCode: address.postalCode,
+            country: address.country,
+            fullName: address.fullName,
+            phone: address.phone,
+          },
+        }),
+      });
 
-    setOrderNumber(generatedOrderNumber);
-    setOrderComplete(true);
-    clearCart();
-    setIsPlacingOrder(false);
+      const checkoutData = await checkoutRes.json();
+
+      if (!checkoutRes.ok) {
+        throw new Error(checkoutData.message || "Failed to create order.");
+      }
+
+      const { orderId, totalAmount } = checkoutData;
+
+      // Step 2: charge the order
+      const chargeRes = await fetch(`${BASE_URL}/payments/charge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId,
+          amount: totalAmount,
+        }),
+      });
+
+      const chargeData = await chargeRes.json();
+
+      if (!chargeRes.ok) {
+        // Order was created but payment failed - surface this clearly rather
+        // than pretending the whole thing succeeded.
+        throw new Error(
+          chargeData.message ||
+            "Order was created, but payment failed. Please contact support."
+        );
+      }
+
+      setOrderNumber(orderId);
+      setOrderComplete(true);
+      clearCart();
+    } catch (err) {
+      console.error("Checkout error:", err);
+      setOrderError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong placing your order. Please try again."
+      );
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   // ── Empty cart guard ──
@@ -152,6 +217,12 @@ export default function CheckoutPage() {
         </p>
 
         <StepIndicator currentStep={step} />
+
+        {orderError && (
+          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {orderError}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 sm:p-8">
           {step === 1 && (

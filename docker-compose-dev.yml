@@ -30,20 +30,36 @@ services:
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    
-  mongo:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: shopwave-rabbitmq
+    ports:
+      - "5672:5672"    # AMQP protocol port
+      - "15672:15672"  # Management UI (http://localhost:15672, guest/guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
     image: mongo:7
-    container_name: shopwave-mongo
+    container_name: shopwave-mongodb
     ports:
       - "27017:27017"
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
     volumes:
-      - mongo_data:/data/db
-
+      - mongodb-data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ─── Microservices ──────────────────────────────────────────────────────
 
@@ -106,15 +122,21 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       CART_SERVICE_URL: http://cart-service:3005
+      USER_SERVICE_URL: http://user-service:3004
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
       cart-service:
         condition: service_started
+      user-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "3006:3006"
 
-    payment-service:
+  payment-service:
     build:
       context: ./payment-service
     container_name: shopwave-payment-service
@@ -126,13 +148,33 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       ORDER_SERVICE_URL: http://order-service:3006
+      USER_SERVICE_URL: http://user-service:3004
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       postgres:
         condition: service_healthy
       order-service:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "3008:3008"
+
+  notification-service:
+    build:
+      context: ./notification-service
+    container_name: shopwave-notification-service
+    environment:
+      PORT: 3010
+      MONGO_URI: mongodb://mongodb:27017/shopwave_notifications
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "3010:3010"
 
   review-service:
     build:
@@ -140,13 +182,25 @@ services:
     container_name: shopwave-review-service
     environment:
       PORT: 3009
-      MONGO_URI: mongodb://mongo:27017/shopwave_reviews
+      MONGO_URI: mongodb://mongodb:27017/shopwave_reviews
     depends_on:
-      mongo:
+      mongodb:
         condition: service_healthy
     ports:
       - "3009:3009"
 
+  catalog-service:
+    build:
+      context: ./catalog-service
+    container_name: shopwave-catalog-service
+    environment:
+      PORT: 3002
+      MONGO_URI: mongodb://mongodb:27017/catalog-service
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "3002:3002"
 
   api-gateway:
     build:
@@ -171,6 +225,7 @@ services:
       - review-service
     ports:
       - "4000:4000"
+
   # ─── Frontend ───────────────────────────────────────────────────────────
 
   frontend-web:
@@ -186,6 +241,5 @@ services:
 
 volumes:
   postgres_data:
-  mongo_data:
-
-  
+  rabbitmq-data:
+  mongodb-data:
