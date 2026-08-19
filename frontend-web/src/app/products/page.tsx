@@ -16,6 +16,10 @@ interface Product {
   imageUrl: string;
 }
 
+interface SearchResult extends Product {
+  score?: number;
+}
+
 function ProductCard({ product }: { product: Product }) {
   const addToCart = useCartStore((s) => s.addToCart);
   const openCart = useCartStore((s) => s.openCart);
@@ -71,7 +75,7 @@ function ProductCard({ product }: { product: Product }) {
 
 function ProductsContent() {
   const searchParams = useSearchParams();
-  const searchQuery = searchParams.get("search")?.toLowerCase() ?? "";
+  const searchQuery = searchParams.get("search") ?? "";
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,12 +83,20 @@ function ProductsContent() {
   const [selectedCategory, setSelectedCategory] = useState("All");
 
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetchData() {
       try {
         setLoading(true);
-        const data = await apiClient.get<Product[]>("/products");
-        setProducts(data);
         setError(null);
+
+        if (searchQuery.trim()) {
+          const data = await apiClient.get<{ results: SearchResult[] }>(
+            `/search?q=${encodeURIComponent(searchQuery)}`
+          );
+          setProducts(data.results);
+        } else {
+          const data = await apiClient.get<Product[]>("/products");
+          setProducts(data);
+        }
       } catch (err) {
         console.error("Failed to fetch products:", err);
         setError("Failed to load products. Please try again.");
@@ -92,19 +104,15 @@ function ProductsContent() {
         setLoading(false);
       }
     }
-    fetchProducts();
-  }, []);
+    fetchData();
+  }, [searchQuery]);
 
   const categories = Array.from(new Set(products.map((p) => p.category)));
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = searchQuery
-      ? product.name.toLowerCase().includes(searchQuery)
-      : true;
-    const matchesCategory =
-      selectedCategory === "All" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts =
+    selectedCategory === "All"
+      ? products
+      : products.filter((p) => p.category === selectedCategory);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -163,7 +171,7 @@ function ProductsContent() {
               ))
             ) : (
               <p className="col-span-full text-sm text-gray-500">
-                No products found.
+                No products found{searchQuery && ` for "${searchQuery}"`}.
               </p>
             )}
           </div>
