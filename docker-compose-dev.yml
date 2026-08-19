@@ -189,6 +189,19 @@ services:
     ports:
       - "3009:3009"
 
+  catalog-service:
+    build:
+      context: ./catalog-service
+    container_name: shopwave-catalog-service
+    environment:
+      PORT: 3002
+      MONGO_URI: mongodb://mongodb:27017/catalog-service
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "3002:3002"
+
   api-gateway:
     build:
       context: ./api-gateway
