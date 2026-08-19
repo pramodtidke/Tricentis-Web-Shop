@@ -1,3 +1,4 @@
+require('../tracing'); // adjust relative path if entry file isn't directly in src/
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');

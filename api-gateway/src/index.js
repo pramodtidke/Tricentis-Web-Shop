@@ -15,7 +15,7 @@
  * proxy error and returns a clean 502 Bad Gateway JSON response instead
  * of letting the connection hang or crash.
  */
-
+require('../tracing');
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -40,6 +40,82 @@ app.use(
     credentials: true,
   })
 );
+
+const client = require('prom-client');
+
+// Collect default Node.js metrics (CPU, memory, event loop, etc.)
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+// RED metrics
+const httpRequestDuration = new client.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.05, 0.1, 0.3, 0.5, 1, 2, 5],
+});
+
+const httpRequestTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status_code'],
+});
+
+const httpRequestErrors = new client.Counter({
+  name: 'http_request_errors_total',
+  help: 'Total number of HTTP requests that resulted in an error (4xx/5xx)',
+  labelNames: ['method', 'route', 'status_code'],
+});
+
+register.registerMetric(httpRequestDuration);
+register.registerMetric(httpRequestTotal);
+register.registerMetric(httpRequestErrors);
+
+// Normalizes dynamic path segments (UUIDs, numeric IDs) to a fixed
+// placeholder so Prometheus labels don't explode in cardinality as
+// real order/user/product IDs flow through the Gateway.
+function normalizeRoute(path) {
+  return path
+    .replace(/\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '/:id') // UUIDs
+    .replace(/\/[a-zA-Z]+_[a-zA-Z0-9]+/g, '/:id')  // prefixed IDs like usr_001, ord_abc123
+    .replace(/\/\d+/g, '/:id'); // plain numeric IDs
+}
+
+// Middleware: measure every request
+app.use((req, res, next) => {
+  const start = process.hrtime();
+
+  res.on('finish', () => {
+    const route = normalizeRoute(req.baseUrl || req.path);
+    const labels = {
+      method: req.method,
+      route,
+      status_code: res.statusCode,
+    };
+
+    const diff = process.hrtime(start);
+    const durationSeconds = diff[0] + diff[1] / 1e9;
+
+    httpRequestDuration.observe(labels, durationSeconds);
+    httpRequestTotal.inc(labels);
+
+    if (res.statusCode >= 400) {
+      httpRequestErrors.inc(labels);
+    }
+  });
+
+  next();
+});
+
+// Metrics endpoint for Prometheus to scrape
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err.message);
+  }
+});
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 // Useful for confirming the Gateway itself is up, independent of any
