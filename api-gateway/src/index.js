@@ -225,6 +225,8 @@ app.use(
 
 // ───────────────────────────────────────────────────────────────────────────── 
 
+// ───────────────────────────────────────────────────────────────────────────── 
+
 const REVIEW_SERVICE_URL = process.env.REVIEW_SERVICE_URL || "http://localhost:3009";
 
 app.use(
@@ -237,6 +239,20 @@ app.use(
     },
   })
 );
+
+const SEARCH_SERVICE_URL = process.env.SEARCH_SERVICE_URL || "http://localhost:3011";
+
+app.use(
+  createProxyMiddleware({
+    pathFilter: "/search",
+    target: SEARCH_SERVICE_URL,
+    changeOrigin: true,
+    on: {
+      error: onProxyError("Search Service"),
+    },
+  })
+);
+
 
 // ─── 404 for anything not matching a known service prefix ────────────────────
 
@@ -257,4 +273,5 @@ app.listen(PORT, () => {
   console.log(`   /orders/*    -> ${ORDER_SERVICE_URL}`);
   console.log(`   /payments/*    -> ${PAYMENT_SERVICE_URL}`);
   console.log(`   /reviews/*   -> ${REVIEW_SERVICE_URL}`);
+  console.log(`   /search/*    -> ${SEARCH_SERVICE_URL}`);
 });
