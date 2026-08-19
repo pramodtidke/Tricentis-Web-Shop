@@ -10,6 +10,12 @@ const sequelize = new Sequelize(
     port: process.env.DB_PORT,
     dialect: 'postgres',
     logging: false,
+    pool: {
+      max: 10,
+      min: 2,        // keep 2 connections always open — no cold-start cost
+      acquire: 30000,
+      idle: 10000,
+    },
   }
 );
 

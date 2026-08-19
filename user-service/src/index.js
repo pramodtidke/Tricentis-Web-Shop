@@ -9,7 +9,7 @@
  *   - Owns the PostgreSQL `users` table exclusively — no other service
  *     should read/write this table directly.
  */
-
+require('../tracing'); // adjust relative path if entry file isn't directly in src/
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");

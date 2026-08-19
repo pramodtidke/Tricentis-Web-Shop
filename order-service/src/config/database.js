@@ -12,7 +12,7 @@ const sequelize = new Sequelize(
     logging: false,
     pool: {
       max: 10,
-      min: 0,
+      min: 2,
       acquire: 30000,
       idle: 10000,
     },
