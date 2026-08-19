@@ -61,6 +61,45 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: shopwave-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    restart: unless-stopped
+
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: shopwave-grafana
+    ports:
+      - "3012:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: shopwave-jaeger
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4318:4318"     # OTLP HTTP receiver (what your services send traces to)
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+
+
   # ─── Microservices ──────────────────────────────────────────────────────
 
   auth-service:
@@ -90,6 +129,8 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       BCRYPT_SALT_ROUNDS: 10
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: user-service
     depends_on:
       postgres:
         condition: service_healthy
@@ -124,6 +165,8 @@ services:
       CART_SERVICE_URL: http://cart-service:3005
       USER_SERVICE_URL: http://user-service:3004
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: order-service
     depends_on:
       postgres:
         condition: service_healthy
@@ -150,6 +193,8 @@ services:
       ORDER_SERVICE_URL: http://order-service:3006
       USER_SERVICE_URL: http://user-service:3004
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: payment-service
     depends_on:
       postgres:
         condition: service_healthy
@@ -216,6 +261,8 @@ services:
       FRONTEND_URL: http://localhost:3000
       PAYMENT_SERVICE_URL: http://payment-service:3008
       REVIEW_SERVICE_URL: http://review-service:3009
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_SERVICE_NAME: api-gateway
     depends_on:
       - auth-service
       - user-service
@@ -243,3 +290,5 @@ volumes:
   postgres_data:
   rabbitmq-data:
   mongodb-data:
+  prometheus_data:
+  grafana_data:
