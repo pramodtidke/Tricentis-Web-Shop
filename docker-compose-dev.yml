@@ -32,6 +32,23 @@ services:
       - postgres_data:/var/lib/postgresql/data
     command: postgres -c max_connections=300 -c shared_buffers=256MB
 
+  discount-postgres:
+    image: postgres:16-alpine
+    container_name: shopwave-discount-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: shopwave_commerce
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - discount_postgres_data:/var/lib/postgresql/data
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: shopwave-rabbitmq
@@ -263,6 +280,23 @@ services:
     ports:
       - "3011:3011"
 
+  discount-service:
+    build:
+      context: ./discount-service
+    container_name: shopwave-discount-service
+    environment:
+      PORT: 3013
+      DB_HOST: discount-postgres
+      DB_PORT: 5432
+      DB_NAME: shopwave_commerce
+      DB_USER: admin
+      DB_PASSWORD: password
+    depends_on:
+      discount-postgres:
+        condition: service_healthy
+    ports:
+      - "3013:3013"
+
   catalog-service:
     build:
       context: ./catalog-service
@@ -292,6 +326,7 @@ services:
       REVIEW_SERVICE_URL: http://review-service:3009
       SEARCH_SERVICE_URL: http://search-service:3011
       REDIS_URL: redis://redis:6379
+      DISCOUNT_SERVICE_URL: http://discount-service:3013
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: api-gateway
     depends_on:
@@ -312,6 +347,8 @@ services:
       search-service:
         condition: service_started
       catalog-service:
+        condition: service_started
+      discount-service:
         condition: service_started
     ports:
       - "4000:4000"
@@ -336,3 +373,4 @@ volumes:
   es_data:
   prometheus_data:
   grafana_data:
+  discount_postgres_data:

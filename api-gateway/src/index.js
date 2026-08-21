@@ -351,6 +351,19 @@ app.use(
   })
 );
 
+const DISCOUNT_SERVICE_URL = process.env.DISCOUNT_SERVICE_URL || "http://localhost:3013";
+
+app.use(
+  createProxyMiddleware({
+    pathFilter: "/discounts",
+    target: DISCOUNT_SERVICE_URL,
+    changeOrigin: true,
+    on: {
+      error: onProxyError("Discount Service"),
+    },
+  })
+);
+
 
 // ─── 404 for anything not matching a known service prefix ────────────────────
 
@@ -373,4 +386,5 @@ app.listen(PORT, () => {
   console.log(`   /reviews/*   -> ${REVIEW_SERVICE_URL}`);
   console.log(`   /search/*    -> ${SEARCH_SERVICE_URL}`);
   console.log(`   /docs        -> Swagger UI`);
+  console.log(`   /discounts/* -> ${DISCOUNT_SERVICE_URL}`);
 });
