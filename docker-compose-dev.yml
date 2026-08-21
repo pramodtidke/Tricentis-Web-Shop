@@ -291,17 +291,28 @@ services:
       PAYMENT_SERVICE_URL: http://payment-service:3008
       REVIEW_SERVICE_URL: http://review-service:3009
       SEARCH_SERVICE_URL: http://search-service:3011
+      REDIS_URL: redis://redis:6379
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: api-gateway
     depends_on:
-      - auth-service
-      - user-service
-      - cart-service
-      - order-service
-      - payment-service
-      - review-service
-      - search-service
-      - catalog-service
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      review-service:
+        condition: service_started
+      search-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
     ports:
       - "4000:4000"
 
