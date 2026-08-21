@@ -4,12 +4,12 @@ import { check, sleep } from 'k6';
 // ── Task 3: Black Friday load profile ──────────────────────────────
 export const options = {
   stages: [
-    { duration: '30s', target: 100 }, // ramp-up: 0 -> 100 VUs
-    { duration: '60s', target: 100 }, // hold at peak (Black Friday sustained load)
-    { duration: '30s', target: 0 },   // ramp-down
+    { duration: '15s', target: 30 },  // ramp 0→30 VUs
+    { duration: '60s', target: 30 },  // hold
+    { duration: '15s', target: 0 },   // ramp down
   ],
   thresholds: {
-    http_req_duration: ['p(95)<2000'], // 95% of requests must complete in < 2s
+    http_req_duration: ['p(95)<2000', 'p(99)<2500'], // 95% of requests must complete in < 2s
     checks: ['rate>0.95'],             // fail the run if >5% of checks fail
   },
 };

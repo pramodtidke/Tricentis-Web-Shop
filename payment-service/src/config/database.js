@@ -11,7 +11,7 @@ const sequelize = new Sequelize(
     dialect: 'postgres',
     logging: false,
     pool: {
-      max: 10,
+      max: 50,
       min: 2,        // keep 2 connections always open — no cold-start cost
       acquire: 30000,
       idle: 10000,
