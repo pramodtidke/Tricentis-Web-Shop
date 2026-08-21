@@ -14,12 +14,27 @@
  * If a target service is down or unreachable, the Gateway catches the
  * proxy error and returns a clean 502 Bad Gateway JSON response instead
  * of letting the connection hang or crash.
+ *
+ * --- Day 15 additions ---
+ *   - helmet: secure HTTP response headers
+ *   - express-rate-limit + rate-limit-redis: general + auth-specific
+ *     rate limiting, backed by the shared Redis container so limits hold
+ *     across restarts/multiple Gateway instances
+ *   - swagger-ui-express: GET /docs serves OpenAPI documentation
  */
 require('../tracing');
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const { RedisStore } = require("rate-limit-redis");
+const { createClient } = require("redis");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
+const path = require("path");
 const { createProxyMiddleware } = require("http-proxy-middleware");
+const rateLimit = require("express-rate-limit");
+const { ipKeyGenerator } = require("express-rate-limit");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -32,7 +47,41 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://localhost:3006";
 const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'http://localhost:3008';
 
+// ─── Redis client (Day 15 — powers rate limiting) ─────────────────────────────
+// Defaults to localhost:6379 to match how the other service URLs above default
+// (this Gateway is commonly run with `npm run dev` on the host, with Redis's
+// container port mapped to the host). Override via REDIS_URL when the
+// Gateway itself runs inside Docker (e.g. REDIS_URL=redis://redis:6379).
+
+const redisClient = createClient({
+  url: process.env.REDIS_URL || "redis://localhost:6379",
+});
+
+redisClient.on("error", (err) => {
+  console.error("❌ Redis client error (rate limiting):", err.message || err);
+});
+
+redisClient.connect().catch((err) => {
+  console.error("❌ Failed to connect to Redis for rate limiting:", err.message || err);
+});
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
+
+// Helmet — secure HTTP headers. Explicit CSP so it doesn't accidentally
+// block the Next.js frontend (on FRONTEND_URL) from calling this Gateway.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        connectSrc: ["'self'", FRONTEND_URL],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+app.disable("x-powered-by");
 
 app.use(
   cors({
@@ -40,6 +89,44 @@ app.use(
     credentials: true,
   })
 );
+
+
+
+// ─── Rate limiting (Day 15) ───────────────────────────────────────────────────
+// Redis-backed so limits are consistent even if the Gateway restarts or runs
+// as multiple instances later.
+
+const makeRedisStore = (prefix) =>
+  new RedisStore({
+    sendCommand: (...args) => redisClient.sendCommand(args),
+    prefix,
+  });
+
+// General limit — 200 requests / minute / IP, applied to every route.
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: makeRedisStore("rl:general:"),
+  message: { message: "Too many requests. Please slow down and try again shortly." },
+});
+
+// Stricter limit on /auth/* — 15 attempts / 15 minutes, keyed by IP + email
+// where available, to blunt brute-force login attempts without collectively
+// locking out an entire office/NAT'd IP over one bad actor's username.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: makeRedisStore("rl:auth:"),
+  keyGenerator: (req) => ipKeyGenerator(req.ip),
+  message: { message: "Too many login attempts. Please try again in 15 minutes." },
+});
+
+app.use(generalLimiter);
+app.use("/auth", authLimiter);
 
 const client = require('prom-client');
 
@@ -116,6 +203,17 @@ app.get('/metrics', async (req, res) => {
     res.status(500).end(err.message);
   }
 });
+
+// ─── Swagger / OpenAPI docs (Day 15) ──────────────────────────────────────────
+// Spec lives at api-gateway/swagger.yaml (sibling of src/).
+
+const swaggerDocument = YAML.load(path.join(__dirname, "..", "swagger.yaml"));
+app.use(
+  "/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerDocument, { customSiteTitle: "ShopWave API Documentation" })
+);
+app.get("/docs.json", (req, res) => res.json(swaggerDocument));
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 // Useful for confirming the Gateway itself is up, independent of any
@@ -287,5 +385,6 @@ app.listen(PORT, () => {
   console.log(`   /payments/*    -> ${PAYMENT_SERVICE_URL}`);
   console.log(`   /reviews/*   -> ${REVIEW_SERVICE_URL}`);
   console.log(`   /search/*    -> ${SEARCH_SERVICE_URL}`);
+  console.log(`   /docs        -> Swagger UI`);
   console.log(`   /discounts/* -> ${DISCOUNT_SERVICE_URL}`);
 });
