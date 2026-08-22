@@ -45,6 +45,11 @@ const User = sequelize.define(
       // NOTE: never expose this field in API responses.
       // See toSafeJSON() below for the safe serialization pattern.
     },
+    role: {
+      type: DataTypes.ENUM("customer", "admin"),
+      allowNull: false,
+      defaultValue: "customer",
+  },
   },
   {
     tableName: "users",
@@ -58,8 +63,8 @@ const User = sequelize.define(
  * strips out password_hash so it never accidentally leaks to the client.
  */
 User.prototype.toSafeJSON = function () {
-  const { id, name, email, createdAt } = this;
-  return { id, name, email, createdAt };
+  const { id, name, email, role, createdAt } = this;
+  return { id, name, email, role, createdAt };
 };
 
 module.exports = User;

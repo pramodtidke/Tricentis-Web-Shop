@@ -123,6 +123,7 @@ router.get("/internal/by-email/:email", async (req, res) => {
       name: user.name,
       email: user.email,
       password_hash: user.password_hash,
+      role: user.role,
     });
   } catch (error) {
     console.error("Internal lookup error:", error);

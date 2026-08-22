@@ -25,6 +25,7 @@ jobs:
           - catalog-service
           - review-service
           - search-service
+          - admin-service
 
     steps:
       - name: Checkout code
