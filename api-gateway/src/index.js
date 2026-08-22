@@ -411,6 +411,19 @@ app.use(
   })
 );
 
+const WISHLIST_SERVICE_URL = process.env.WISHLIST_SERVICE_URL || "http://localhost:3014";
+
+app.use(
+  createProxyMiddleware({
+    pathFilter: "/wishlist",
+    target: WISHLIST_SERVICE_URL,
+    changeOrigin: true,
+    on: {
+      error: onProxyError("Wishlist Service"),
+    },
+  })
+);
+
 
 // ─── 404 for anything not matching a known service prefix ────────────────────
 
@@ -435,4 +448,5 @@ app.listen(PORT, () => {
   console.log(`   /admin/*     -> ${ADMIN_SERVICE_URL} (requires admin JWT)`);
   console.log(`   /docs        -> Swagger UI`);
   console.log(`   /discounts/* -> ${DISCOUNT_SERVICE_URL}`);
+  console.log(`   /wishlist/*  -> ${WISHLIST_SERVICE_URL}`);
 });
