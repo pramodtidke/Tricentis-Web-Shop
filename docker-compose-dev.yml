@@ -187,6 +187,23 @@ services:
     ports:
       - "3004:3004"
 
+  admin-service:
+    build:
+      context: ./admin-service
+    container_name: shopwave-admin-service
+    environment:
+      PORT: 3015
+      DB_NAME: shopwave_users
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3015:3015"
+
   cart-service:
     build:
       context: ./cart-service
@@ -361,6 +378,8 @@ services:
       SEARCH_SERVICE_URL: http://search-service:3011
       REDIS_URL: redis://redis:6379
       DISCOUNT_SERVICE_URL: http://discount-service:3013
+      ADMIN_SERVICE_URL: http://admin-service:3015
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       WISHLIST_SERVICE_URL: http://wishlist-service:3014
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: api-gateway
@@ -384,6 +403,8 @@ services:
       catalog-service:
         condition: service_started
       discount-service:
+        condition: service_started
+      admin-service:
         condition: service_started
       wishlist-service:
         condition: service_started

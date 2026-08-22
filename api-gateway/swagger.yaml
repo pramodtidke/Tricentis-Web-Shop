@@ -22,6 +22,8 @@ tags:
     description: Order Service (port 3006) — checkout and order lifecycle
   - name: Payment
     description: Payment Service (port 3008) — payment processing
+  - name: Admin
+    description: Admin Service (port 3015) — back-office reporting, requires admin role
 
 components:
   securitySchemes:
@@ -37,6 +39,42 @@ components:
         error:
           type: string
           example: Invalid credentials
+
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [customer, admin]
+        createdAt:
+          type: string
+          format: date-time
+    AdminOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        totalAmount:
+          type: string
+          example: "24.99"
+        status:
+          type: string
+          enum: [pending, paid, shipped]
+        shippingAddress:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
 
     LoginRequest:
       type: object
@@ -364,6 +402,63 @@ paths:
                 $ref: '#/components/schemas/ChargeResponse'
         '402':
           description: Charge declined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: Fetch all registered users (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of all users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminUser'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden — admin role required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/orders:
+    get:
+      tags: [Admin]
+      summary: Fetch all system orders, regardless of user (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of all orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminOrder'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden — admin role required
           content:
             application/json:
               schema:

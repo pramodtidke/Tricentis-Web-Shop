@@ -35,6 +35,7 @@ const path = require("path");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const rateLimit = require("express-rate-limit");
 const { ipKeyGenerator } = require("express-rate-limit");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -46,6 +47,8 @@ const CART_SERVICE_URL = process.env.CART_SERVICE_URL || "http://localhost:3005"
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://localhost:3006";
 const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'http://localhost:3008';
+const ADMIN_SERVICE_URL = process.env.ADMIN_SERVICE_URL || 'http://localhost:3015';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // ─── Redis client (Day 15 — powers rate limiting) ─────────────────────────────
 // Defaults to localhost:6379 to match how the other service URLs above default
@@ -254,6 +257,34 @@ function onProxyError(serviceName) {
 // Service's own route is POST /auth/login, so the full incoming path
 // /auth/login is forwarded as-is). This keeps the Gateway a pure passthrough.
 
+// ─── RBAC middleware (Day 16) ─────────────────────────────────────────────────
+// Verifies the JWT and enforces admin-only access on protected routes.
+// Uses the same JWT_SECRET as Auth Service — tokens must have been signed
+// there (Auth Service now embeds `role` in every login/refresh token).
+
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers["authorization"];
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Missing or malformed Authorization header." });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    if (decoded.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden: admin role required." });
+    }
+
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid or expired token." });
+  }
+}
+
 app.use(
   createProxyMiddleware({
     pathFilter: "/auth",
@@ -351,6 +382,22 @@ app.use(
   })
 );
 
+app.use(
+  "/admin",
+  requireAdmin
+);
+
+app.use(
+  createProxyMiddleware({
+    pathFilter: "/admin",
+    target: ADMIN_SERVICE_URL,
+    changeOrigin: true,
+    on: {
+      error: onProxyError("Admin Service"),
+    },
+  })
+);
+
 const DISCOUNT_SERVICE_URL = process.env.DISCOUNT_SERVICE_URL || "http://localhost:3013";
 
 app.use(
@@ -398,6 +445,7 @@ app.listen(PORT, () => {
   console.log(`   /payments/*    -> ${PAYMENT_SERVICE_URL}`);
   console.log(`   /reviews/*   -> ${REVIEW_SERVICE_URL}`);
   console.log(`   /search/*    -> ${SEARCH_SERVICE_URL}`);
+  console.log(`   /admin/*     -> ${ADMIN_SERVICE_URL} (requires admin JWT)`);
   console.log(`   /docs        -> Swagger UI`);
   console.log(`   /discounts/* -> ${DISCOUNT_SERVICE_URL}`);
   console.log(`   /wishlist/*  -> ${WISHLIST_SERVICE_URL}`);

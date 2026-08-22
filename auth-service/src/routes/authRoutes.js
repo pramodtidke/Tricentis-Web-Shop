@@ -66,7 +66,7 @@ router.post("/login", async (req, res) => {
 
     // 3. Sign a JWT
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, email: user.email, role: user.role },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
@@ -85,6 +85,7 @@ router.post("/login", async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,
       },
       token,
     });
@@ -142,7 +143,7 @@ router.post("/refresh", async (req, res) => {
     }
 
     const newToken = jwt.sign(
-      { userId: decoded.userId, email: decoded.email },
+      { userId: decoded.userId, email: decoded.email, role: decoded.role },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
