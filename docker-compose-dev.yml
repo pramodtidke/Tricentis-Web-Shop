@@ -48,7 +48,7 @@ services:
       retries: 5
     volumes:
       - discount_postgres_data:/var/lib/postgresql/data
-  
+
   wishlist-postgres:
     image: postgres:16-alpine
     container_name: shopwave-wishlist-postgres
@@ -70,8 +70,8 @@ services:
     image: rabbitmq:3-management
     container_name: shopwave-rabbitmq
     ports:
-      - "5672:5672"    # AMQP protocol port
-      - "15672:15672"  # Management UI (http://localhost:15672, guest/guest)
+      - "5672:5672" # AMQP protocol port
+      - "15672:15672" # Management UI (http://localhost:15672, guest/guest)
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -106,7 +106,11 @@ services:
     ports:
       - "9200:9200"
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\"'"]
+      test:
+        [
+          "CMD-SHELL",
+          'curl -s http://localhost:9200/_cluster/health | grep -q ''"status"''',
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -144,8 +148,8 @@ services:
     image: jaegertracing/all-in-one:latest
     container_name: shopwave-jaeger
     ports:
-      - "16686:16686"   # Jaeger UI
-      - "4318:4318"     # OTLP HTTP receiver (what your services send traces to)
+      - "16686:16686" # Jaeger UI
+      - "4318:4318" # OTLP HTTP receiver (what your services send traces to)
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     restart: unless-stopped
@@ -330,7 +334,7 @@ services:
         condition: service_healthy
     ports:
       - "3013:3013"
-  
+
   wishlist-service:
     build:
       context: ./wishlist-service
@@ -361,6 +365,17 @@ services:
     ports:
       - "3002:3002"
 
+  file-service:
+    build:
+      context: ./file-service
+    container_name: shopwave-file-service
+    environment:
+      PORT: 3016
+    volumes:
+      - file_uploads_data:/app/uploads
+    ports:
+      - "3016:3016"
+
   api-gateway:
     build:
       context: ./api-gateway
@@ -381,6 +396,7 @@ services:
       ADMIN_SERVICE_URL: http://admin-service:3015
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       WISHLIST_SERVICE_URL: http://wishlist-service:3014
+      FILE_SERVICE_URL: http://file-service:3016
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: api-gateway
     depends_on:
@@ -408,6 +424,8 @@ services:
         condition: service_started
       wishlist-service:
         condition: service_started
+      file-service:
+        condition: service_started
     ports:
       - "4000:4000"
 
@@ -433,3 +451,4 @@ volumes:
   grafana_data:
   discount_postgres_data:
   wishlist_postgres_data:
+  file_uploads_data:

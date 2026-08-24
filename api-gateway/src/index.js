@@ -22,7 +22,7 @@
  *     across restarts/multiple Gateway instances
  *   - swagger-ui-express: GET /docs serves OpenAPI documentation
  */
-require('../tracing');
+require("../tracing");
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -40,14 +40,25 @@ const jwt = require("jsonwebtoken");
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "http://localhost:3001";
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://localhost:3004";
-const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || "http://localhost:3002";
-const CART_SERVICE_URL = process.env.CART_SERVICE_URL || "http://localhost:3005";
+const AUTH_SERVICE_URL =
+  process.env.AUTH_SERVICE_URL || "http://localhost:3001";
+const USER_SERVICE_URL =
+  process.env.USER_SERVICE_URL || "http://localhost:3004";
+const CATALOG_SERVICE_URL =
+  process.env.CATALOG_SERVICE_URL || "http://localhost:3002";
+const CART_SERVICE_URL =
+  process.env.CART_SERVICE_URL || "http://localhost:3005";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://localhost:3006";
-const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'http://localhost:3008';
-const ADMIN_SERVICE_URL = process.env.ADMIN_SERVICE_URL || 'http://localhost:3015';
+const ORDER_SERVICE_URL =
+  process.env.ORDER_SERVICE_URL || "http://localhost:3006";
+const PAYMENT_SERVICE_URL =
+  process.env.PAYMENT_SERVICE_URL || "http://localhost:3008";
+const WISHLIST_SERVICE_URL =
+  process.env.WISHLIST_SERVICE_URL || "http://localhost:3014";
+const ADMIN_SERVICE_URL =
+  process.env.ADMIN_SERVICE_URL || "http://localhost:3015";
+const FILE_SERVICE_URL =
+  process.env.FILE_SERVICE_URL || "http://localhost:3016";
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // ─── Redis client (Day 15 — powers rate limiting) ─────────────────────────────
@@ -65,7 +76,10 @@ redisClient.on("error", (err) => {
 });
 
 redisClient.connect().catch((err) => {
-  console.error("❌ Failed to connect to Redis for rate limiting:", err.message || err);
+  console.error(
+    "❌ Failed to connect to Redis for rate limiting:",
+    err.message || err,
+  );
 });
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
@@ -82,7 +96,7 @@ app.use(
       },
     },
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 app.disable("x-powered-by");
 
@@ -90,10 +104,8 @@ app.use(
   cors({
     origin: FRONTEND_URL,
     credentials: true,
-  })
+  }),
 );
-
-
 
 // ─── Rate limiting (Day 15) ───────────────────────────────────────────────────
 // Redis-backed so limits are consistent even if the Gateway restarts or runs
@@ -112,7 +124,9 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: makeRedisStore("rl:general:"),
-  message: { message: "Too many requests. Please slow down and try again shortly." },
+  message: {
+    message: "Too many requests. Please slow down and try again shortly.",
+  },
 });
 
 // Stricter limit on /auth/* — 15 attempts / 15 minutes, keyed by IP + email
@@ -125,13 +139,15 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   store: makeRedisStore("rl:auth:"),
   keyGenerator: (req) => ipKeyGenerator(req.ip),
-  message: { message: "Too many login attempts. Please try again in 15 minutes." },
+  message: {
+    message: "Too many login attempts. Please try again in 15 minutes.",
+  },
 });
 
 app.use(generalLimiter);
 app.use("/auth", authLimiter);
 
-const client = require('prom-client');
+const client = require("prom-client");
 
 // Collect default Node.js metrics (CPU, memory, event loop, etc.)
 const register = new client.Registry();
@@ -139,22 +155,22 @@ client.collectDefaultMetrics({ register });
 
 // RED metrics
 const httpRequestDuration = new client.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'Duration of HTTP requests in seconds',
-  labelNames: ['method', 'route', 'status_code'],
+  name: "http_request_duration_seconds",
+  help: "Duration of HTTP requests in seconds",
+  labelNames: ["method", "route", "status_code"],
   buckets: [0.05, 0.1, 0.3, 0.5, 1, 2, 5],
 });
 
 const httpRequestTotal = new client.Counter({
-  name: 'http_requests_total',
-  help: 'Total number of HTTP requests',
-  labelNames: ['method', 'route', 'status_code'],
+  name: "http_requests_total",
+  help: "Total number of HTTP requests",
+  labelNames: ["method", "route", "status_code"],
 });
 
 const httpRequestErrors = new client.Counter({
-  name: 'http_request_errors_total',
-  help: 'Total number of HTTP requests that resulted in an error (4xx/5xx)',
-  labelNames: ['method', 'route', 'status_code'],
+  name: "http_request_errors_total",
+  help: "Total number of HTTP requests that resulted in an error (4xx/5xx)",
+  labelNames: ["method", "route", "status_code"],
 });
 
 register.registerMetric(httpRequestDuration);
@@ -166,16 +182,19 @@ register.registerMetric(httpRequestErrors);
 // real order/user/product IDs flow through the Gateway.
 function normalizeRoute(path) {
   return path
-    .replace(/\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '/:id') // UUIDs
-    .replace(/\/[a-zA-Z]+_[a-zA-Z0-9]+/g, '/:id')  // prefixed IDs like usr_001, ord_abc123
-    .replace(/\/\d+/g, '/:id'); // plain numeric IDs
+    .replace(
+      /\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g,
+      "/:id",
+    ) // UUIDs
+    .replace(/\/[a-zA-Z]+_[a-zA-Z0-9]+/g, "/:id") // prefixed IDs like usr_001, ord_abc123
+    .replace(/\/\d+/g, "/:id"); // plain numeric IDs
 }
 
 // Middleware: measure every request
 app.use((req, res, next) => {
   const start = process.hrtime();
 
-  res.on('finish', () => {
+  res.on("finish", () => {
     const route = normalizeRoute(req.baseUrl || req.path);
     const labels = {
       method: req.method,
@@ -198,9 +217,9 @@ app.use((req, res, next) => {
 });
 
 // Metrics endpoint for Prometheus to scrape
-app.get('/metrics', async (req, res) => {
+app.get("/metrics", async (req, res) => {
   try {
-    res.set('Content-Type', register.contentType);
+    res.set("Content-Type", register.contentType);
     res.end(await register.metrics());
   } catch (err) {
     res.status(500).end(err.message);
@@ -214,7 +233,9 @@ const swaggerDocument = YAML.load(path.join(__dirname, "..", "swagger.yaml"));
 app.use(
   "/docs",
   swaggerUi.serve,
-  swaggerUi.setup(swaggerDocument, { customSiteTitle: "ShopWave API Documentation" })
+  swaggerUi.setup(swaggerDocument, {
+    customSiteTitle: "ShopWave API Documentation",
+  }),
 );
 app.get("/docs.json", (req, res) => res.json(swaggerDocument));
 
@@ -233,7 +254,10 @@ app.get("/health", (req, res) => {
 
 function onProxyError(serviceName) {
   return (err, req, res) => {
-    console.error(`❌ Proxy error reaching ${serviceName}:`, err.message || err);
+    console.error(
+      `❌ Proxy error reaching ${serviceName}:`,
+      err.message || err,
+    );
 
     // res may sometimes be a raw socket rather than the full Express
     // response object — guard against that before calling .status()/.json()
@@ -243,7 +267,7 @@ function onProxyError(serviceName) {
         JSON.stringify({
           message: `${serviceName} is currently unavailable. Please try again shortly.`,
           gateway: true,
-        })
+        }),
       );
     } else if (typeof res.end === "function") {
       res.end();
@@ -266,7 +290,9 @@ function requireAdmin(req, res, next) {
   const authHeader = req.headers["authorization"];
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Missing or malformed Authorization header." });
+    return res
+      .status(401)
+      .json({ message: "Missing or malformed Authorization header." });
   }
 
   const token = authHeader.split(" ")[1];
@@ -275,7 +301,9 @@ function requireAdmin(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
 
     if (decoded.role !== "admin") {
-      return res.status(403).json({ message: "Forbidden: admin role required." });
+      return res
+        .status(403)
+        .json({ message: "Forbidden: admin role required." });
     }
 
     req.user = decoded;
@@ -293,7 +321,7 @@ app.use(
     on: {
       error: onProxyError("Auth Service"),
     },
-  })
+  }),
 );
 
 app.use(
@@ -304,7 +332,7 @@ app.use(
     on: {
       error: onProxyError("User Service"),
     },
-  })
+  }),
 );
 
 app.use(
@@ -315,9 +343,8 @@ app.use(
     on: {
       error: onProxyError("Catalog Service"),
     },
-  })
+  }),
 );
-
 
 app.use(
   createProxyMiddleware({
@@ -327,7 +354,7 @@ app.use(
     on: {
       error: onProxyError("Cart Service"),
     },
-  })
+  }),
 );
 
 app.use(
@@ -338,7 +365,7 @@ app.use(
     on: {
       error: onProxyError("Order Service"),
     },
-  })
+  }),
 );
 
 app.use(
@@ -349,14 +376,15 @@ app.use(
     on: {
       error: onProxyError("Payment Service"),
     },
-  })
+  }),
 );
 
-// ───────────────────────────────────────────────────────────────────────────── 
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ───────────────────────────────────────────────────────────────────────────── 
+// ─────────────────────────────────────────────────────────────────────────────
 
-const REVIEW_SERVICE_URL = process.env.REVIEW_SERVICE_URL || "http://localhost:3009";
+const REVIEW_SERVICE_URL =
+  process.env.REVIEW_SERVICE_URL || "http://localhost:3009";
 
 app.use(
   createProxyMiddleware({
@@ -366,10 +394,11 @@ app.use(
     on: {
       error: onProxyError("Review Service"),
     },
-  })
+  }),
 );
 
-const SEARCH_SERVICE_URL = process.env.SEARCH_SERVICE_URL || "http://localhost:3011";
+const SEARCH_SERVICE_URL =
+  process.env.SEARCH_SERVICE_URL || "http://localhost:3011";
 
 app.use(
   createProxyMiddleware({
@@ -379,13 +408,10 @@ app.use(
     on: {
       error: onProxyError("Search Service"),
     },
-  })
+  }),
 );
 
-app.use(
-  "/admin",
-  requireAdmin
-);
+app.use("/admin", requireAdmin);
 
 app.use(
   createProxyMiddleware({
@@ -395,10 +421,11 @@ app.use(
     on: {
       error: onProxyError("Admin Service"),
     },
-  })
+  }),
 );
 
-const DISCOUNT_SERVICE_URL = process.env.DISCOUNT_SERVICE_URL || "http://localhost:3013";
+const DISCOUNT_SERVICE_URL =
+  process.env.DISCOUNT_SERVICE_URL || "http://localhost:3013";
 
 app.use(
   createProxyMiddleware({
@@ -408,10 +435,8 @@ app.use(
     on: {
       error: onProxyError("Discount Service"),
     },
-  })
+  }),
 );
-
-const WISHLIST_SERVICE_URL = process.env.WISHLIST_SERVICE_URL || "http://localhost:3014";
 
 app.use(
   createProxyMiddleware({
@@ -421,9 +446,19 @@ app.use(
     on: {
       error: onProxyError("Wishlist Service"),
     },
-  })
+  }),
 );
 
+app.use(
+  createProxyMiddleware({
+    pathFilter: "/files",
+    target: FILE_SERVICE_URL,
+    changeOrigin: true,
+    on: {
+      error: onProxyError("File Service"),
+    },
+  }),
+);
 
 // ─── 404 for anything not matching a known service prefix ────────────────────
 
@@ -449,4 +484,5 @@ app.listen(PORT, () => {
   console.log(`   /docs        -> Swagger UI`);
   console.log(`   /discounts/* -> ${DISCOUNT_SERVICE_URL}`);
   console.log(`   /wishlist/*  -> ${WISHLIST_SERVICE_URL}`);
+  console.log(`   /files/*     -> ${FILE_SERVICE_URL}`);
 });
