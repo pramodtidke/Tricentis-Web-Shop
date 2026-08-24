@@ -48,10 +48,33 @@ app.get("/admin/users", async (req, res) => {
 
 app.get("/admin/orders", async (req, res) => {
   try {
-    const orders = await Order.findAll({
+    // Defaults chosen for an admin dashboard table — 50 rows is enough to
+    // browse comfortably without overwhelming the page. Both values are
+    // clamped to sane bounds so a malformed or malicious query string
+    // (e.g. ?limit=999999) can't force an unbounded, unpaginated fetch —
+    // which is exactly the problem we're fixing.
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit, 10) || 50),
+    );
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await Order.findAndCountAll({
       order: [["createdAt", "DESC"]],
+      limit,
+      offset,
     });
-    res.status(200).json(orders);
+
+    res.status(200).json({
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+      },
+    });
   } catch (error) {
     console.error("Error fetching orders:", error);
     res.status(500).json({ message: "Failed to fetch orders." });
@@ -59,7 +82,9 @@ app.get("/admin/orders", async (req, res) => {
 });
 
 app.use((req, res) => {
-  res.status(404).json({ message: `No route configured for ${req.method} ${req.path}.` });
+  res
+    .status(404)
+    .json({ message: `No route configured for ${req.method} ${req.path}.` });
 });
 
 testConnection()
