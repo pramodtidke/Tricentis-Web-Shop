@@ -26,6 +26,7 @@ jobs:
           - review-service
           - search-service
           - admin-service
+          - file-service
 
     steps:
       - name: Checkout code
@@ -37,7 +38,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install dependencies and run security audit
         working-directory: ./${{ matrix.service }}
