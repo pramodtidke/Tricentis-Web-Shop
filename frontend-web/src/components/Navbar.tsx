@@ -21,7 +21,10 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 inset-x-0 z-30 bg-white border-b border-slate-100 h-16">
       <div className="max-w-6xl mx-auto h-full flex items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="text-xl font-bold text-slate-900 tracking-tight">
+        <Link
+          href="/"
+          className="text-xl font-bold text-slate-900 tracking-tight"
+        >
           Shop<span className="text-indigo-600">Wave</span>
         </Link>
 
@@ -34,8 +37,17 @@ export default function Navbar() {
             <div className="w-24 h-6 rounded bg-slate-100 animate-pulse" />
           ) : isAuthenticated && user ? (
             <>
+              {user.role === "admin" && (
+                <Link
+                  href="/admin"
+                  className="rounded-lg bg-purple-100 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-200 transition"
+                >
+                  Admin Panel
+                </Link>
+              )}
               <span className="hidden sm:block text-sm text-slate-500">
-                Hi, <span className="font-medium text-slate-700">{user.name}</span>
+                Hi,{" "}
+                <span className="font-medium text-slate-700">{user.name}</span>
               </span>
               <button
                 onClick={handleLogout}
@@ -46,7 +58,10 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900 font-medium transition">
+              <Link
+                href="/login"
+                className="text-sm text-slate-600 hover:text-slate-900 font-medium transition"
+              >
                 Sign in
               </Link>
               <Link

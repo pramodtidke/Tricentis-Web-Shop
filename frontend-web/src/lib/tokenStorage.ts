@@ -71,6 +71,7 @@ export interface StoredUser {
   id: string;
   name: string;
   email: string;
+  role: "customer" | "admin";
 }
 
 export const userStorage = {
