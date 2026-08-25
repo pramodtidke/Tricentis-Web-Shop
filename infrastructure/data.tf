@@ -106,7 +106,7 @@ resource "aws_security_group" "redis" {
 
 resource "aws_elasticache_replication_group" "redis" {
   replication_group_id = "shopwave-redis"
-  description           = "Redis for Cart and Auth sessions"
+  description          = "Redis for Cart and Auth sessions"
 
   engine         = "redis"
   engine_version = "7.1"
@@ -115,7 +115,7 @@ resource "aws_elasticache_replication_group" "redis" {
 
   num_cache_clusters = local.az_count # one node per AZ for HA
 
-  subnet_group_name = aws_elasticache_subnet_group.redis.name
+  subnet_group_name  = aws_elasticache_subnet_group.redis.name
   security_group_ids = [aws_security_group.redis.id]
 
   automatic_failover_enabled = true
