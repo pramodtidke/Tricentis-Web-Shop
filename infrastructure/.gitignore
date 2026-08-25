@@ -1,0 +1,30 @@
+# Local Terraform state and provider cache — never commit these
+.terraform/
+.terraform.tfstate.lock.info
+
+# Terraform state files (contain resource IDs, sometimes secrets in plaintext)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Saved plan files (if ever generated with `terraform plan -out=...`)
+*.tfplan
+
+# Variable files that may contain real secrets/credentials
+*.tfvars
+*.tfvars.json
+!example.tfvars
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Override files (local-only overrides, shouldn't be shared)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration (may contain credentials)
+.terraformrc
+terraform.rc
