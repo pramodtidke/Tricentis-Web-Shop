@@ -1,0 +1,52 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shopwave-microservice.fullname" . }}
+  labels:
+    {{- include "shopwave-microservice.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "shopwave-microservice.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "shopwave-microservice.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.containerPort }}
+              protocol: TCP
+          {{- if .Values.env }}
+          env:
+            {{- range .Values.env }}
+            - name: {{ .name }}
+              {{- if .value }}
+              value: {{ .value | quote }}
+              {{- else if .valueFrom }}
+              valueFrom:
+                {{- toYaml .valueFrom | nindent 16 }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.probes.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.probes.periodSeconds | default 10 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.probes.periodSeconds | default 15 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

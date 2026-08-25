@@ -1,0 +1,36 @@
+﻿replicaCount: 2
+
+image:
+  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave/api-gateway"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  containerPort: 8080
+
+probes:
+  enabled: true
+  path: /health
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "250m"
+    memory: "256Mi"
+
+env:
+  - name: REDIS_URL
+    value: "redis://REPLACE_ME:6379"
+  - name: JWT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: api-gateway-secrets
+        key: jwt-secret
+  - name: NODE_ENV
+    value: "production"
