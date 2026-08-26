@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
 import useCartStore from "@/store/cartStore";
+import useStore from "@/store/useStore";
 
 interface Product {
   id: string;
@@ -23,6 +24,10 @@ interface SearchResult extends Product {
 function ProductCard({ product }: { product: Product }) {
   const addToCart = useCartStore((s) => s.addToCart);
   const openCart = useCartStore((s) => s.openCart);
+  const user = useStore((s) => s.user);
+
+  const [wishlisted, setWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -34,6 +39,32 @@ function ProductCard({ product }: { product: Product }) {
       imageUrl: product.imageUrl,
     });
     openCart();
+  };
+
+  const handleToggleWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      return; // not logged in — button is disabled below, this is a safety guard
+    }
+
+    setWishlistLoading(true);
+    try {
+      if (!wishlisted) {
+        await apiClient.post(`/wishlist/${user.id}/add`, {
+          productId: product.id,
+        });
+        setWishlisted(true);
+      } else {
+        await apiClient.delete(`/wishlist/${user.id}/remove/${product.id}`);
+        setWishlisted(false);
+      }
+    } catch (err) {
+      console.error("Failed to update wishlist:", err);
+    } finally {
+      setWishlistLoading(false);
+    }
   };
 
   return (
@@ -49,6 +80,27 @@ function ProductCard({ product }: { product: Product }) {
           sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
           className="object-cover transition-transform duration-200 group-hover:scale-105"
         />
+        <button
+          onClick={handleToggleWishlist}
+          disabled={!user || wishlistLoading}
+          aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill={wishlisted ? "currentColor" : "none"}
+            stroke="currentColor"
+            strokeWidth={1.8}
+            className={`h-4 w-4 ${wishlisted ? "text-red-500" : "text-gray-600"}`}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+            />
+          </svg>
+        </button>
       </div>
       <div className="p-4">
         <p className="text-xs uppercase tracking-wide text-gray-500">
