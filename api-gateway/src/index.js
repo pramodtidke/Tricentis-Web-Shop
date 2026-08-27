@@ -59,6 +59,8 @@ const ADMIN_SERVICE_URL =
   process.env.ADMIN_SERVICE_URL || "http://localhost:3015";
 const FILE_SERVICE_URL =
   process.env.FILE_SERVICE_URL || "http://localhost:3016";
+const ANALYTICS_SERVICE_URL =
+  process.env.ANALYTICS_SERVICE_URL || "http://localhost:3017";
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // ─── Redis client (Day 15 — powers rate limiting) ─────────────────────────────
@@ -451,6 +453,17 @@ app.use(
 
 app.use(
   createProxyMiddleware({
+    pathFilter: "/analytics",
+    target: ANALYTICS_SERVICE_URL,
+    changeOrigin: true,
+    on: {
+      error: onProxyError("Analytics Service"),
+    },
+  }),
+);
+
+app.use(
+  createProxyMiddleware({
     pathFilter: "/files",
     target: FILE_SERVICE_URL,
     changeOrigin: true,
@@ -485,4 +498,5 @@ app.listen(PORT, () => {
   console.log(`   /discounts/* -> ${DISCOUNT_SERVICE_URL}`);
   console.log(`   /wishlist/*  -> ${WISHLIST_SERVICE_URL}`);
   console.log(`   /files/*     -> ${FILE_SERVICE_URL}`);
+  console.log(`   /analytics/* -> ${ANALYTICS_SERVICE_URL}`);
 });
