@@ -1,0 +1,23 @@
+replicaCount: 1
+
+image:
+  repository: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave/cart-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3005
+
+probes:
+  initialDelaySeconds: 15
+  path: /health
+
+env:
+  - name: PORT
+    value: "3005"
+  - name: REDIS_URL
+    valueFrom:
+      secretKeyRef:
+        name: cart-service-secrets
+        key: redis-url

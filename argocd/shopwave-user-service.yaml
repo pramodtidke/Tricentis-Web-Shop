@@ -1,21 +1,17 @@
-﻿replicaCount: 2
-
+replicaCount: 2
 image:
   repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave/user-service"
   tag: "latest"
   pullPolicy: IfNotPresent
-
 service:
   type: ClusterIP
   port: 80
   containerPort: 3004
-
 probes:
   enabled: true
   path: /health
   initialDelaySeconds: 5
   periodSeconds: 10
-
 resources:
   requests:
     cpu: "100m"
@@ -23,7 +19,6 @@ resources:
   limits:
     cpu: "250m"
     memory: "256Mi"
-
 env:
   - name: DATABASE_URL
     valueFrom:
