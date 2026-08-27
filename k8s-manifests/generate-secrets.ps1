@@ -2,21 +2,27 @@
 .SYNOPSIS
     Creates/updates the Kubernetes Secrets referenced by the shopwave-microservice
     Helm chart (api-gateway-secrets, user-service-secrets, auth-service-secrets,
-    cart-service-secrets) from local environment variables. Nothing here is
+    cart-service-secrets, catalog-service-secrets, order-service-secrets,
+    analytics-service-secrets) from local environment variables. Nothing here is
     committed to Git in plaintext.
 
 .DESCRIPTION
     values.yaml (api-gateway), values-user-service.yaml, values-auth-service.yaml,
-    and values-cart-service.yaml all reference secretKeyRef lookups that assume
+    values-cart-service.yaml, values-catalog-service.yaml, values-order-service.yaml,
+    and values-analytics-service.yaml all reference secretKeyRef lookups that assume
     these Secrets already exist in-cluster:
-      - api-gateway-secrets:   jwt-secret
-      - user-service-secrets:  jwt-secret, database-url
-      - auth-service-secrets:  jwt-secret, redis-url
-      - cart-service-secrets:  redis-url
+      - api-gateway-secrets:      jwt-secret
+      - user-service-secrets:     jwt-secret, database-url
+      - auth-service-secrets:     jwt-secret, redis-url
+      - cart-service-secrets:     redis-url
+      - catalog-service-secrets:  mongo-uri
+      - order-service-secrets:    database-url
+      - analytics-service-secrets: database-url
 
-    This script closes the Day 21 open issue and extends it on Day 23 for the
-    two newly onboarded services. It reads secret values from env vars (never
-    hardcoded in this file) and applies them idempotently via
+    This script closes the Day 21 open issue, extended it on Day 23 for auth/cart,
+    and extends it again on Day 24 for catalog/order/analytics. It reads secret
+    values from env vars (never hardcoded in this file) and applies them
+    idempotently via
     `kubectl create secret ... --dry-run=client -o yaml | kubectl apply -f -`,
     so re-running it updates existing secrets rather than failing on "already exists".
 
@@ -31,6 +37,9 @@
         $env:AUTH_SERVICE_JWT_SECRET   = "some-strong-secret"
         $env:AUTH_SERVICE_REDIS_URL    = "redis://host.docker.internal:6379"
         $env:CART_SERVICE_REDIS_URL    = "redis://host.docker.internal:6379"
+        $env:CATALOG_SERVICE_MONGO_URI      = "mongodb://host.docker.internal:27017/catalog-service"
+        $env:ORDER_SERVICE_DATABASE_URL     = "postgres://postgres:postgres@host.docker.internal:5433/shopwave_orders"
+        $env:ANALYTICS_SERVICE_DATABASE_URL = "postgres://postgres:postgres@host.docker.internal:5433/shopwave_analytics"
 
 .USAGE
     .\generate-secrets.ps1
@@ -112,9 +121,40 @@ kubectl create secret generic cart-service-secrets `
     --from-literal=redis-url=$cartServiceRedisUrl `
     --dry-run=client -o yaml | kubectl apply -f -
 
+
+# ---------------- catalog-service-secrets (NEW Day 24) ----------------
+Write-Host "`n-- catalog-service-secrets --" -ForegroundColor Cyan
+$catalogServiceMongoUri = Require-EnvVar -Name "CATALOG_SERVICE_MONGO_URI"
+
+kubectl create secret generic catalog-service-secrets `
+    --namespace=$Namespace `
+    --from-literal=mongo-uri=$catalogServiceMongoUri `
+    --dry-run=client -o yaml | kubectl apply -f -
+
+# ---------------- order-service-secrets (NEW Day 24) ----------------
+Write-Host "`n-- order-service-secrets --" -ForegroundColor Cyan
+$orderServiceDatabaseUrl = Require-EnvVar -Name "ORDER_SERVICE_DATABASE_URL"
+
+kubectl create secret generic order-service-secrets `
+    --namespace=$Namespace `
+    --from-literal=database-url=$orderServiceDatabaseUrl `
+    --dry-run=client -o yaml | kubectl apply -f -
+
+# ---------------- analytics-service-secrets (NEW Day 24) ----------------
+Write-Host "`n-- analytics-service-secrets --" -ForegroundColor Cyan
+$analyticsServiceDatabaseUrl = Require-EnvVar -Name "ANALYTICS_SERVICE_DATABASE_URL"
+
+kubectl create secret generic analytics-service-secrets `
+    --namespace=$Namespace `
+    --from-literal=database-url=$analyticsServiceDatabaseUrl `
+    --dry-run=client -o yaml | kubectl apply -f -
+
 Write-Host "`nDone. Verify with:" -ForegroundColor Green
 Write-Host "  kubectl get secrets -n $Namespace"
 Write-Host "  kubectl describe secret api-gateway-secrets -n $Namespace"
 Write-Host "  kubectl describe secret user-service-secrets -n $Namespace"
 Write-Host "  kubectl describe secret auth-service-secrets -n $Namespace"
 Write-Host "  kubectl describe secret cart-service-secrets -n $Namespace"
+Write-Host "  kubectl describe secret catalog-service-secrets -n $Namespace"
+Write-Host "  kubectl describe secret order-service-secrets -n $Namespace"
+Write-Host "  kubectl describe secret analytics-service-secrets -n $Namespace"

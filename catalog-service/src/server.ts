@@ -9,6 +9,10 @@ const PORT = process.env.PORT || 3002;
 app.use(express.json());
 app.use("/products", productsRouter);
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ service: "catalog-service", status: "ok" });
+});
+
 async function startServer() {
   await connectDB();
   await seedDatabase();
