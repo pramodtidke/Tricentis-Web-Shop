@@ -3,12 +3,12 @@ name: Helm Chart Validation
 on:
   pull_request:
     paths:
-      - 'helm/**'
+      - "helm/**"
   push:
     branches:
       - main
     paths:
-      - 'helm/**'
+      - "helm/**"
 
 jobs:
   helm-lint-and-template:
@@ -24,13 +24,17 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v4
         with:
-          version: 'v4.2.4'
+          version: "v4.2.4"
 
       - name: helm lint
         run: helm lint .
 
-      - name: helm template - api-gateway values
-        run: helm template shopwave-api-gateway . -f values.yaml
-
-      - name: helm template - user-service values
-        run: helm template shopwave-user-service . -f values-user-service.yaml
+      - name: helm template - every service values file
+        run: |
+          set -euo pipefail
+          for values_file in values-*.yaml; do
+            service_name="${values_file#values-}"
+            service_name="${service_name%.yaml}"
+            echo "== helm template: $service_name ($values_file) =="
+            helm template "shopwave-$service_name" . -f values.yaml -f "$values_file"
+          done

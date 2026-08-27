@@ -1,4 +1,4 @@
-require('../tracing'); // adjust relative path if entry file isn't directly in src/
+require("../tracing"); // adjust relative path if entry file isn't directly in src/
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -13,6 +13,10 @@ app.use(express.json());
 const PORT = process.env.PORT || 3006;
 
 app.use("/orders", orderRoutes);
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ service: "order-service", status: "ok" });
+});
 
 async function startServer() {
   await testConnection();
