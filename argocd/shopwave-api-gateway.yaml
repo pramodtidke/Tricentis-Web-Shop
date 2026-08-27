@@ -1,0 +1,51 @@
+# ArgoCD Application: shopwave-api-gateway
+#
+# Points ArgoCD at the ONE generic shopwave-microservice Helm chart, injecting
+# api-gateway's values.yaml. To onboard user-service (or any future service) as
+# its own ArgoCD-managed app, copy this file to
+# argocd/shopwave-user-service.yaml and change:
+#   - metadata.name
+#   - spec.source.helm.valueFiles -> values-user-service.yaml
+#   - spec.destination.namespace (if services are split by namespace)
+#
+# Apply manually once (bootstrapping the app-of-apps or first install):
+#   kubectl apply -f argocd/shopwave-api-gateway.yaml -n argocd
+# After that, ArgoCD reconciles this Application's own definition from Git too,
+# provided it's included in whatever root Application/ApplicationSet tracks argocd/.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shopwave-api-gateway
+  namespace: argocd
+  finalizers:
+    # Ensures ArgoCD cleans up the deployed Helm release if this Application
+    # object itself is ever deleted (prevents orphaned resources in-cluster).
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/pramodtidke/Tricentis-Web-Shop.git
+    targetRevision: main
+    path: helm/shopwave-microservice
+    helm:
+      valueFiles:
+        - values.yaml   # api-gateway's values file, lives alongside the chart
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: shopwave
+
+  syncPolicy:
+    automated:
+      prune: true       # remove resources that are no longer defined in Git
+      selfHeal: true    # revert any manual/out-of-band cluster drift back to Git state
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
