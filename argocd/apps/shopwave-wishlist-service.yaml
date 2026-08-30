@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: shopwave-user-service
+  name: shopwave-wishlist-service
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -13,7 +13,7 @@ spec:
     path: helm/shopwave-microservice
     helm:
       valueFiles:
-        - values-user-service.yaml
+        - values-wishlist-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: shopwave

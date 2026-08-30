@@ -59,4 +59,8 @@ app.use((err, req, res, next) => {
 // GET /files/:filename — serves uploaded images publicly
 app.use("/files", express.static(UPLOAD_DIR));
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "file-service" });
+});
+
 app.listen(PORT, () => console.log(`file-service listening on port ${PORT}`));

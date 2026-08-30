@@ -1,13 +1,13 @@
 replicaCount: 2
 
 image:
-  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave-order-service"
+  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave-admin-service"
   tag: "latest"
   pullPolicy: IfNotPresent
 
 service:
   port: 80
-  containerPort: 3006
+  containerPort: 3015
 
 probes:
   enabled: true
@@ -29,25 +29,25 @@ env:
   - name: DB_HOST
     valueFrom:
       secretKeyRef:
-        name: order-service-secrets
+        name: admin-service-secrets
         key: db-host
   - name: DB_PORT
     valueFrom:
       secretKeyRef:
-        name: order-service-secrets
+        name: admin-service-secrets
         key: db-port
   - name: DB_NAME
     valueFrom:
       secretKeyRef:
-        name: order-service-secrets
+        name: admin-service-secrets
         key: db-name
   - name: DB_USER
     valueFrom:
       secretKeyRef:
-        name: order-service-secrets
+        name: admin-service-secrets
         key: db-user
   - name: DB_PASSWORD
     valueFrom:
       secretKeyRef:
-        name: order-service-secrets
+        name: admin-service-secrets
         key: db-password

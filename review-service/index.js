@@ -11,6 +11,10 @@ const PORT = process.env.PORT || 3009;
 
 app.use("/reviews", reviewRoutes);
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "review-service" });
+});
+
 async function startServer() {
   await connectDB();
   app.listen(PORT, () => {

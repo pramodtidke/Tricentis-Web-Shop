@@ -1,4 +1,4 @@
-﻿replicaCount: 2
+replicaCount: 2
 
 image:
   repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave/api-gateway"
@@ -8,7 +8,7 @@ image:
 service:
   type: ClusterIP
   port: 80
-  containerPort: 8080
+  containerPort: 4000
 
 probes:
   enabled: true
@@ -25,12 +25,41 @@ resources:
     memory: "256Mi"
 
 env:
-  - name: REDIS_URL
-    value: "redis://REPLACE_ME:6379"
+  - name: NODE_ENV
+    value: "production"
   - name: JWT_SECRET
     valueFrom:
       secretKeyRef:
         name: api-gateway-secrets
         key: jwt-secret
-  - name: NODE_ENV
-    value: "production"
+  - name: REDIS_URL
+    valueFrom:
+      secretKeyRef:
+        name: api-gateway-secrets
+        key: redis-url
+  - name: AUTH_SERVICE_URL
+    value: "http://shopwave-auth-service-shopwave-microservice:80"
+  - name: USER_SERVICE_URL
+    value: "http://shopwave-user-service-shopwave-microservice:80"
+  - name: CATALOG_SERVICE_URL
+    value: "http://shopwave-catalog-service-shopwave-microservice:80"
+  - name: CART_SERVICE_URL
+    value: "http://shopwave-cart-service-shopwave-microservice:80"
+  - name: ORDER_SERVICE_URL
+    value: "http://shopwave-order-service-shopwave-microservice:80"
+  - name: PAYMENT_SERVICE_URL
+    value: "http://shopwave-payment-service-shopwave-microservice:80"
+  - name: WISHLIST_SERVICE_URL
+    value: "http://shopwave-wishlist-service-shopwave-microservice:80"
+  - name: ADMIN_SERVICE_URL
+    value: "http://shopwave-admin-service-shopwave-microservice:80"
+  - name: FILE_SERVICE_URL
+    value: "http://shopwave-file-service-shopwave-microservice:80"
+  - name: ANALYTICS_SERVICE_URL
+    value: "http://shopwave-analytics-service-shopwave-microservice:80"
+  - name: REVIEW_SERVICE_URL
+    value: "http://shopwave-review-service-shopwave-microservice:80"
+  - name: SEARCH_SERVICE_URL
+    value: "http://shopwave-search-service-shopwave-microservice:80"
+  - name: DISCOUNT_SERVICE_URL
+    value: "http://shopwave-discount-service-shopwave-microservice:80"

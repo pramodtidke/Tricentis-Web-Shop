@@ -1,13 +1,13 @@
 replicaCount: 2
 
 image:
-  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave-catalog-service"
+  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave-review-service"
   tag: "latest"
   pullPolicy: IfNotPresent
 
 service:
   port: 80
-  containerPort: 3002
+  containerPort: 3009
 
 probes:
   enabled: true
@@ -29,5 +29,5 @@ env:
   - name: MONGO_URI
     valueFrom:
       secretKeyRef:
-        name: catalog-service-secrets
+        name: review-service-secrets
         key: mongo-uri

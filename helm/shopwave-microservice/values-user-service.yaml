@@ -1,4 +1,4 @@
-﻿replicaCount: 2
+replicaCount: 2
 
 image:
   repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave/user-service"
@@ -25,15 +25,30 @@ resources:
     memory: "256Mi"
 
 env:
-  - name: DATABASE_URL
-    valueFrom:
-      secretKeyRef:
-        name: user-service-secrets
-        key: database-url
-  - name: JWT_SECRET
-    valueFrom:
-      secretKeyRef:
-        name: user-service-secrets
-        key: jwt-secret
   - name: NODE_ENV
     value: "production"
+  - name: DB_HOST
+    valueFrom:
+      secretKeyRef:
+        name: user-service-secrets
+        key: db-host
+  - name: DB_PORT
+    valueFrom:
+      secretKeyRef:
+        name: user-service-secrets
+        key: db-port
+  - name: DB_NAME
+    valueFrom:
+      secretKeyRef:
+        name: user-service-secrets
+        key: db-name
+  - name: DB_USER
+    valueFrom:
+      secretKeyRef:
+        name: user-service-secrets
+        key: db-user
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: user-service-secrets
+        key: db-password
