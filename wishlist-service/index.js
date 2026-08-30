@@ -11,6 +11,10 @@ const PORT = process.env.PORT || 3014;
 
 app.use("/wishlist", wishlistRoutes);
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "wishlist-service" });
+});
+
 async function startServer() {
   try {
     await sequelize.authenticate();

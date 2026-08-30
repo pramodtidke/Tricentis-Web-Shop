@@ -1,20 +1,24 @@
-require('../tracing'); // adjust relative path if entry file isn't directly in src/
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const { sequelize } = require('./models');
-const paymentRoutes = require('./routes/paymentRoutes');
+require("../tracing"); // adjust relative path if entry file isn't directly in src/
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const { sequelize } = require("./models");
+const paymentRoutes = require("./routes/paymentRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.use('/payments', paymentRoutes);
+app.use("/payments", paymentRoutes);
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "payment-service" });
+});
 
 // Catch-all 404 -- must stay LAST, after all real routes are registered.
 app.use((req, res) => {
-  res.status(404).json({ message: 'No route configured for this path' });
+  res.status(404).json({ message: "No route configured for this path" });
 });
 
 const PORT = process.env.PORT || 3008;
@@ -27,6 +31,6 @@ sequelize
     });
   })
   .catch((err) => {
-    console.error('Failed to connect to database:', err.message);
+    console.error("Failed to connect to database:", err.message);
     process.exit(1);
   });

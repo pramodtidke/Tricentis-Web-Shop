@@ -11,6 +11,10 @@ const PORT = process.env.PORT || 3011;
 
 app.use("/search", searchRoutes);
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "search-service" });
+});
+
 async function startServer() {
   try {
     await ensureIndex();

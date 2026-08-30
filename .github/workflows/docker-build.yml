@@ -23,6 +23,8 @@ jobs:
           - payment-service
           - notification-service
           - catalog-service
+          - discount-service
+          - wishlist-service
           - review-service
           - search-service
           - admin-service

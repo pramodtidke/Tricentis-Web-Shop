@@ -1,13 +1,13 @@
 replicaCount: 2
 
 image:
-  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave-catalog-service"
+  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave-search-service"
   tag: "latest"
   pullPolicy: IfNotPresent
 
 service:
   port: 80
-  containerPort: 3002
+  containerPort: 3011
 
 probes:
   enabled: true
@@ -26,8 +26,5 @@ resources:
 env:
   - name: NODE_ENV
     value: production
-  - name: MONGO_URI
-    valueFrom:
-      secretKeyRef:
-        name: catalog-service-secrets
-        key: mongo-uri
+  - name: ELASTICSEARCH_URL
+    value: "http://elasticsearch:9200"

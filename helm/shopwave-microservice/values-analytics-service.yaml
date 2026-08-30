@@ -5,10 +5,9 @@ image:
   tag: "latest"
   pullPolicy: IfNotPresent
 
-containerPort: 3017
-
 service:
   port: 80
+  containerPort: 3017
 
 probes:
   enabled: true
@@ -27,8 +26,28 @@ resources:
 env:
   - name: NODE_ENV
     value: production
-  - name: DATABASE_URL
+  - name: DB_HOST
     valueFrom:
       secretKeyRef:
         name: analytics-service-secrets
-        key: database-url
+        key: db-host
+  - name: DB_PORT
+    valueFrom:
+      secretKeyRef:
+        name: analytics-service-secrets
+        key: db-port
+  - name: DB_NAME
+    valueFrom:
+      secretKeyRef:
+        name: analytics-service-secrets
+        key: db-name
+  - name: DB_USER
+    valueFrom:
+      secretKeyRef:
+        name: analytics-service-secrets
+        key: db-user
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: analytics-service-secrets
+        key: db-password
