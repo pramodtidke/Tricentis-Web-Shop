@@ -1,0 +1,24 @@
+replicaCount: 2
+image:
+  repository: ghcr.io/pramodtidke/tricentis-web-shop/shopwave-frontend-web
+  tag: latest
+service:
+  port: 80
+  containerPort: 3000
+probes:
+  enabled: true
+  path: /
+  initialDelaySeconds: 5
+  periodSeconds: 10
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+env:
+  - name: NODE_ENV
+    value: "production"
+  - name: NEXT_PUBLIC_API_URL
+    value: "http://localhost:4000"

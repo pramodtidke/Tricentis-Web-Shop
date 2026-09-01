@@ -19,6 +19,7 @@
       - wishlist-service-secrets:  db-host, db-port, db-name, db-user, db-password
       - admin-service-secrets:     db-host, db-port, db-name, db-user, db-password
       - payment-service-secrets:   db-host, db-port, db-name, db-user, db-password, rabbitmq-url
+      - notification-service-secrets: rabbitmq-url, mongo-uri
 
     file-service and search-service need no Secret: file-service takes no
     credentials, and search-service's ELASTICSEARCH_URL is a plain (non-secret)
@@ -117,10 +118,9 @@
         $env:INVENTORY_SERVICE_DB_NAME     = "shopwave_inventory"
         $env:INVENTORY_SERVICE_DB_USER     = "postgres"
         $env:INVENTORY_SERVICE_DB_PASSWORD = "postgres"
-
         
-
-        
+        $env:NOTIFICATION_SERVICE_RABBITMQ_URL = "amqp://guest:guest@host.docker.internal:5672"
+        $env:NOTIFICATION_SERVICE_MONGO_URI = "mongodb://host.docker.internal:27017/shopwave_notifications"
 
 .USAGE
     .\generate-secrets.ps1
@@ -168,6 +168,7 @@ $apiGatewayJwtSecret = Require-EnvVar -Name "API_GATEWAY_JWT_SECRET"
 $apiGatewayRedisUrl  = Require-EnvVar -Name "API_GATEWAY_REDIS_URL"
 
 kubectl create secret generic api-gateway-secrets --namespace=$Namespace --from-literal=jwt-secret=$apiGatewayJwtSecret --from-literal=redis-url=$apiGatewayRedisUrl --dry-run=client -o yaml | kubectl apply -f -
+
 # ---------------- user-service-secrets (FIXED Day 25: was single database-url, code actually reads 5 discrete DB_* vars) ----------------
 Write-Host "`n-- user-service-secrets --" -ForegroundColor Cyan
 $userServiceDbHost     = Require-EnvVar -Name "USER_SERVICE_DB_HOST"
@@ -280,6 +281,13 @@ $ghcrUsername = Require-EnvVar -Name "GHCR_USERNAME"
 $ghcrPat      = Require-EnvVar -Name "GHCR_PAT"
 
 kubectl create secret docker-registry ghcr-login-secret --namespace=$Namespace --docker-server=ghcr.io --docker-username=$ghcrUsername --docker-password=$ghcrPat --docker-email=unused@shopwave.local --dry-run=client -o yaml | kubectl apply -f -
+
+# ---------------- notification-service-secrets (NEW Day 27) ----------------
+Write-Host "`n-- notification-service-secrets --" -ForegroundColor Cyan
+$notificationRabbitMQ = Require-EnvVar -Name "NOTIFICATION_SERVICE_RABBITMQ_URL"
+$notificationMongo    = Require-EnvVar -Name "NOTIFICATION_SERVICE_MONGO_URI"
+
+kubectl create secret generic notification-service-secrets --namespace=$Namespace --from-literal=rabbitmq-url=$notificationRabbitMQ --from-literal=mongo-uri=$notificationMongo --dry-run=client -o yaml | kubectl apply -f -
 
 Write-Host "`nDone. Verify with:" -ForegroundColor Green
 Write-Host "  kubectl get secrets -n $Namespace"
