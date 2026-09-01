@@ -1,4 +1,4 @@
-replicaCount: 2
+replicaCount: 1
 
 image:
   repository: ghcr.io/pramodtidke/tricentis-web-shop/shopwave-payment-service
@@ -17,11 +17,11 @@ probes:
 
 resources:
   requests:
-    cpu: 100m
-    memory: 128Mi
+    cpu: 50m
+    memory: 64Mi
   limits:
-    cpu: 250m
-    memory: 256Mi
+    cpu: 150m
+    memory: 128Mi
 
 env:
   - name: NODE_ENV
