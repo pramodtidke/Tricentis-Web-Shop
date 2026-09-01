@@ -25,4 +25,8 @@ async function startServer() {
   }
 }
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "inventory-service" });
+});
+
 startServer();

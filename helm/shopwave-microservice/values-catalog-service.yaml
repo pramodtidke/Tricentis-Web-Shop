@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave-catalog-service"
+  repository: ghcr.io/pramodtidke/tricentis-web-shop/shopwave-catalog-service
   tag: "latest"
   pullPolicy: IfNotPresent
 
@@ -31,3 +31,4 @@ env:
       secretKeyRef:
         name: catalog-service-secrets
         key: mongo-uri
+

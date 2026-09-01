@@ -62,6 +62,8 @@ const FILE_SERVICE_URL =
 const ANALYTICS_SERVICE_URL =
   process.env.ANALYTICS_SERVICE_URL || "http://localhost:3017";
 const JWT_SECRET = process.env.JWT_SECRET;
+const INVENTORY_SERVICE_URL =
+  process.env.INVENTORY_SERVICE_URL || "http://localhost:3007";
 
 // ─── Redis client (Day 15 — powers rate limiting) ─────────────────────────────
 // Defaults to localhost:6379 to match how the other service URLs above default
@@ -473,6 +475,17 @@ app.use(
   }),
 );
 
+app.use(
+  createProxyMiddleware({
+    pathFilter: "/inventory",
+    target: INVENTORY_SERVICE_URL,
+    changeOrigin: true,
+    on: {
+      error: onProxyError("Inventory Service"),
+    },
+  }),
+);
+
 // ─── 404 for anything not matching a known service prefix ────────────────────
 
 app.use((req, res) => {
@@ -499,4 +512,5 @@ app.listen(PORT, () => {
   console.log(`   /wishlist/*  -> ${WISHLIST_SERVICE_URL}`);
   console.log(`   /files/*     -> ${FILE_SERVICE_URL}`);
   console.log(`   /analytics/* -> ${ANALYTICS_SERVICE_URL}`);
+  console.log(`   /inventory/* -> ${INVENTORY_SERVICE_URL}`);
 });

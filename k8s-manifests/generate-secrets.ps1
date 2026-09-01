@@ -112,6 +112,16 @@
         $env:PAYMENT_SERVICE_DB_PASSWORD = "postgres"
         $env:PAYMENT_SERVICE_RABBITMQ_URL = "amqp://guest:guest@host.docker.internal:5672"
 
+        $env:INVENTORY_SERVICE_DB_HOST     = "host.docker.internal"
+        $env:INVENTORY_SERVICE_DB_PORT     = "5433"
+        $env:INVENTORY_SERVICE_DB_NAME     = "shopwave_inventory"
+        $env:INVENTORY_SERVICE_DB_USER     = "postgres"
+        $env:INVENTORY_SERVICE_DB_PASSWORD = "postgres"
+
+        
+
+        
+
 .USAGE
     .\generate-secrets.ps1
     .\generate-secrets.ps1 -Namespace shopwave
@@ -253,6 +263,23 @@ $paymentServiceDbPassword  = Require-EnvVar -Name "PAYMENT_SERVICE_DB_PASSWORD"
 $paymentServiceRabbitmqUrl = Require-EnvVar -Name "PAYMENT_SERVICE_RABBITMQ_URL"
 
 kubectl create secret generic payment-service-secrets --namespace=$Namespace --from-literal=db-host=$paymentServiceDbHost --from-literal=db-port=$paymentServiceDbPort --from-literal=db-name=$paymentServiceDbName --from-literal=db-user=$paymentServiceDbUser --from-literal=db-password=$paymentServiceDbPassword --from-literal=rabbitmq-url=$paymentServiceRabbitmqUrl --dry-run=client -o yaml | kubectl apply -f -
+
+# ---------------- inventory-service-secrets (NEW Day 26) ----------------
+Write-Host "`n-- inventory-service-secrets --" -ForegroundColor Cyan
+$inventoryServiceDbHost     = Require-EnvVar -Name "INVENTORY_SERVICE_DB_HOST"
+$inventoryServiceDbPort     = Require-EnvVar -Name "INVENTORY_SERVICE_DB_PORT"
+$inventoryServiceDbName     = Require-EnvVar -Name "INVENTORY_SERVICE_DB_NAME"
+$inventoryServiceDbUser     = Require-EnvVar -Name "INVENTORY_SERVICE_DB_USER"
+$inventoryServiceDbPassword = Require-EnvVar -Name "INVENTORY_SERVICE_DB_PASSWORD"
+
+kubectl create secret generic inventory-service-secrets --namespace=$Namespace --from-literal=db-host=$inventoryServiceDbHost --from-literal=db-port=$inventoryServiceDbPort --from-literal=db-name=$inventoryServiceDbName --from-literal=db-user=$inventoryServiceDbUser --from-literal=db-password=$inventoryServiceDbPassword --dry-run=client -o yaml | kubectl apply -f -
+
+# ---------------- ghcr-login-secret (NEW Day 26: image pull secret for GHCR) ----------------
+Write-Host "`n-- ghcr-login-secret --" -ForegroundColor Cyan
+$ghcrUsername = Require-EnvVar -Name "GHCR_USERNAME"
+$ghcrPat      = Require-EnvVar -Name "GHCR_PAT"
+
+kubectl create secret docker-registry ghcr-login-secret --namespace=$Namespace --docker-server=ghcr.io --docker-username=$ghcrUsername --docker-password=$ghcrPat --docker-email=unused@shopwave.local --dry-run=client -o yaml | kubectl apply -f -
 
 Write-Host "`nDone. Verify with:" -ForegroundColor Green
 Write-Host "  kubectl get secrets -n $Namespace"

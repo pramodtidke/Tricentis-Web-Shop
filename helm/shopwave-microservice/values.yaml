@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave/api-gateway"
+  repository: ghcr.io/pramodtidke/tricentis-web-shop/shopwave-api-gateway
   tag: "latest"
   pullPolicy: IfNotPresent
 
@@ -63,3 +63,4 @@ env:
     value: "http://shopwave-search-service-shopwave-microservice:80"
   - name: DISCOUNT_SERVICE_URL
     value: "http://shopwave-discount-service-shopwave-microservice:80"
+
