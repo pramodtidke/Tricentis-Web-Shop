@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave/user-service"
+  repository: ghcr.io/pramodtidke/tricentis-web-shop/shopwave-user-service
   tag: "latest"
   pullPolicy: IfNotPresent
 
@@ -52,3 +52,4 @@ env:
       secretKeyRef:
         name: user-service-secrets
         key: db-password
+

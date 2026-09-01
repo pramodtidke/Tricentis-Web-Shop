@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave-wishlist-service"
+  repository: ghcr.io/pramodtidke/tricentis-web-shop/shopwave-wishlist-service
   tag: "latest"
   pullPolicy: IfNotPresent
 
@@ -51,3 +51,4 @@ env:
       secretKeyRef:
         name: wishlist-service-secrets
         key: db-password
+

@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave-file-service"
+  repository: ghcr.io/pramodtidke/tricentis-web-shop/shopwave-file-service
   tag: "latest"
   pullPolicy: IfNotPresent
 
@@ -26,3 +26,4 @@ resources:
 env:
   - name: NODE_ENV
     value: production
+

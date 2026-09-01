@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/shopwave/auth-service
+  repository: ghcr.io/pramodtidke/tricentis-web-shop/shopwave-auth-service
   tag: latest
   pullPolicy: IfNotPresent
 
